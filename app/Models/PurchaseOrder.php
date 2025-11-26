@@ -1,0 +1,207 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
+
+class PurchaseOrder extends Model
+{
+    use HasFactory, LogsActivity;
+
+    protected $fillable = [
+        'po_number',
+        'requisition_id',
+        'created_by',
+        'approved_by',
+        'approved_at',
+        'requested_delivery_date',
+        'items',
+        'total_quantity',
+        'subtotal',
+        'tax',
+        'other_charges',
+        'grand_total',
+        'status',
+        'notes',
+        // Legacy fields (kept for compatibility)
+        'assigned_to',
+        'supplier_id',
+        'invoice_number',
+        'total_amount',
+        'purchased_at',
+        'receipt_path',
+    ];
+
+    protected $casts = [
+        'items' => 'array',
+        'approved_at' => 'datetime',
+        'requested_delivery_date' => 'date',
+        'total_quantity' => 'decimal:2',
+        'subtotal' => 'decimal:2',
+        'tax' => 'decimal:2',
+        'other_charges' => 'decimal:2',
+        'grand_total' => 'decimal:2',
+        'purchased_at' => 'datetime',
+        'total_amount' => 'decimal:2',
+    ];
+
+    /**
+     * Generate a unique PO number
+     */
+    public static function generatePONumber(): string
+    {
+        $year = date('Y');
+        $month = date('m');
+        $lastPO = self::whereYear('created_at', $year)
+            ->whereMonth('created_at', $month)
+            ->orderBy('id', 'desc')
+            ->first();
+
+        $sequence = $lastPO ? (intval(substr($lastPO->po_number, -4)) + 1) : 1;
+        
+        return sprintf('PO-%s%s-%04d', $year, $month, $sequence);
+    }
+
+    /**
+     * Get the activity log options.
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logFillable()
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
+
+    /**
+     * Get the requisition that this purchase order is for.
+     */
+    public function requisition(): BelongsTo
+    {
+        return $this->belongsTo(ChefRequisition::class, 'requisition_id');
+    }
+
+    /**
+     * Get the user who approved and created this PO
+     */
+    public function approver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    /**
+     * Get the user who created this PO (from requisition)
+     */
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Get the user assigned to this purchase order.
+     */
+    public function assignedTo(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_to');
+    }
+
+    /**
+     * Get the expense associated with this purchase order.
+     */
+    public function expense(): HasOne
+    {
+        return $this->hasOne(Expense::class);
+    }
+
+    /**
+     * Scope for filtering by status
+     */
+    public function scopeByStatus($query, $status)
+    {
+        return $query->where('status', $status);
+    }
+
+    /**
+     * Check if PO can be edited
+     */
+    public function canBeEdited(): bool
+    {
+        return in_array($this->status, ['open', 'ordered']);
+    }
+
+    /**
+     * Check if PO is completed
+     */
+    public function isCompleted(): bool
+    {
+        return in_array($this->status, ['received', 'closed']);
+    }
+
+    /**
+     * Get unique vendors from items
+     */
+    public function getVendorsAttribute(): array
+    {
+        if (!$this->items) {
+            return [];
+        }
+
+        $vendors = collect($this->items)
+            ->pluck('vendor')
+            ->unique()
+            ->filter()
+            ->values()
+            ->toArray();
+
+        return $vendors;
+    }
+
+    /**
+     * Get items grouped by vendor with detailed information
+     */
+    public function getItemsByVendor(): array
+    {
+        if (!$this->items) {
+            return [];
+        }
+
+        return collect($this->items)
+            ->groupBy('vendor')
+            ->map(function ($items, $vendorName) {
+                $vendorTotal = $items->sum(function ($item) {
+                    return ($item['price'] ?? 0) * ($item['quantity'] ?? 0);
+                });
+                
+                return [
+                    'vendor_name' => $vendorName,
+                    'items' => $items->values(),
+                    'item_count' => $items->count(),
+                    'total_quantity' => $items->sum('quantity'),
+                    'vendor_subtotal' => $vendorTotal,
+                ];
+            })
+            ->sortByDesc('vendor_subtotal')
+            ->values()
+            ->toArray();
+    }
+
+    /**
+     * Get vendor statistics
+     */
+    public function getVendorStats(): array
+    {
+        $itemsByVendor = $this->getItemsByVendor();
+        
+        return [
+            'total_vendors' => count($itemsByVendor),
+            'vendors' => collect($itemsByVendor)->pluck('vendor_name')->toArray(),
+            'largest_vendor' => $itemsByVendor[0]['vendor_name'] ?? null,
+            'largest_vendor_amount' => $itemsByVendor[0]['vendor_subtotal'] ?? 0,
+        ];
+    }
+}
