@@ -16,16 +16,21 @@ class Expense extends Model
         'purchase_order_id',
         'created_by',
         'category',
+        'vendor',
         'description',
         'amount',
         'expense_date',
+        'invoice_number',
         'receipt_path',
+        'payment_method',
+        'items',
         'note',
     ];
 
     protected $casts = [
         'expense_date' => 'date',
         'amount' => 'decimal:2',
+        'items' => 'array',
     ];
 
     /**

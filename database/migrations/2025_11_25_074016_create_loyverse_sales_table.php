@@ -13,17 +13,20 @@ return new class extends Migration
     {
         Schema::create('loyverse_sales', function (Blueprint $table) {
             $table->id();
-            $table->string('loyverse_receipt_number')->unique();
-            $table->date('sale_date');
-            $table->decimal('total_amount', 10, 2);
-            $table->decimal('tax_amount', 10, 2)->default(0);
-            $table->string('payment_method')->nullable();
-            $table->string('store_name')->nullable();
-            $table->json('line_items')->nullable();
-            $table->text('raw_data')->nullable();
+            $table->string('external_id')->unique();
+            $table->date('date');
+            $table->decimal('total_sales', 12, 2)->default(0);
+            $table->decimal('tax', 12, 2)->default(0);
+            $table->decimal('discount', 12, 2)->default(0);
+            $table->json('items')->nullable();
+            $table->string('payment_type')->nullable();
+            $table->string('customer_name')->nullable();
+            $table->string('receipt_number')->nullable();
+            $table->timestamp('created_at_external')->nullable();
+            $table->timestamp('synced_at')->nullable();
             $table->timestamps();
-            
-            $table->index('sale_date');
+
+            $table->index('date');
         });
     }
 

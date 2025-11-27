@@ -26,6 +26,8 @@ return new class extends Migration
             $table->decimal('other_charges', 12, 2)->default(0);
             $table->decimal('grand_total', 12, 2)->default(0);
             $table->enum('status', ['open', 'ordered', 'partially_received', 'received', 'closed', 'cancelled'])->default('open');
+            // New workflow status column to support enhanced lifecycle without replacing legacy status
+            $table->string('workflow_status')->default('pending');
             $table->text('notes')->nullable();
             $table->timestamps();
             

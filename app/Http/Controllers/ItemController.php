@@ -13,8 +13,7 @@ class ItemController extends Controller
      */
     public function index()
     {
-        $items = Item::orderBy('name')->get();
-        return view('settings.index', compact('items'));
+        return redirect()->route('settings', ['tab' => 'items']);
     }
 
     /**

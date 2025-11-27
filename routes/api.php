@@ -27,27 +27,57 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 Route::middleware(['auth:sanctum'])->group(function () {
     
     // Chef Requisitions
-    Route::apiResource('requisitions', ChefRequisitionController::class);
+    Route::apiResource('requisitions', ChefRequisitionController::class)->names([
+        'index' => 'api.requisitions.index',
+        'store' => 'api.requisitions.store',
+        'show' => 'api.requisitions.show',
+        'update' => 'api.requisitions.update',
+        'destroy' => 'api.requisitions.destroy',
+    ]);
     Route::post('requisitions/{chefRequisition}/approve', [ChefRequisitionController::class, 'approve'])
+        ->name('api.requisitions.approve')
         ->middleware('role:manager,admin');
     Route::post('requisitions/{chefRequisition}/reject', [ChefRequisitionController::class, 'reject'])
+        ->name('api.requisitions.reject')
         ->middleware('role:manager,admin');
     
     // Purchase Orders
-    Route::apiResource('purchase-orders', PurchaseOrderController::class);
+    Route::apiResource('purchase-orders', PurchaseOrderController::class)->names([
+        'index' => 'api.purchase-orders.index',
+        'store' => 'api.purchase-orders.store',
+        'show' => 'api.purchase-orders.show',
+        'update' => 'api.purchase-orders.update',
+        'destroy' => 'api.purchase-orders.destroy',
+    ]);
     Route::post('purchase-orders/{purchaseOrder}/mark-purchased', [PurchaseOrderController::class, 'markPurchased'])
+        ->name('api.purchase-orders.mark-purchased')
         ->middleware('role:purchaser,manager,admin');
-    Route::get('purchase-orders/{purchaseOrder}/download-receipt', [PurchaseOrderController::class, 'downloadReceipt']);
+    Route::get('purchase-orders/{purchaseOrder}/download-receipt', [PurchaseOrderController::class, 'downloadReceipt'])
+        ->name('api.purchase-orders.download-receipt');
     
     // Expenses
-    Route::apiResource('expenses', ExpenseController::class);
+    Route::apiResource('expenses', ExpenseController::class)->names([
+        'index' => 'api.expenses.index',
+        'store' => 'api.expenses.store',
+        'show' => 'api.expenses.show',
+        'update' => 'api.expenses.update',
+        'destroy' => 'api.expenses.destroy',
+    ]);
     Route::post('expenses/{expense}/approve', [ExpenseController::class, 'approve'])
+        ->name('api.expenses.approve')
         ->middleware('role:manager,admin');
     Route::post('expenses/{expense}/reject', [ExpenseController::class, 'reject'])
+        ->name('api.expenses.reject')
         ->middleware('role:manager,admin');
     
     // Payroll
-    Route::apiResource('payroll', PayrollController::class);
+    Route::apiResource('payroll', PayrollController::class)->names([
+        'index' => 'api.payroll.index',
+        'store' => 'api.payroll.store',
+        'show' => 'api.payroll.show',
+        'update' => 'api.payroll.update',
+        'destroy' => 'api.payroll.destroy',
+    ]);
     Route::post('payroll/{payrollEntry}/mark-paid', [PayrollController::class, 'markPaid'])
         ->middleware('role:manager,admin');
     

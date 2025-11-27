@@ -1,0 +1,235 @@
+<div class="flex h-screen bg-gray-50" x-data="{ sidebarOpen: false, financeOpen: false }">
+    <!-- Sidebar -->
+    <aside class="fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0"
+           :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'">
+        <div class="flex flex-col h-full">
+            <!-- Logo Header -->
+            <div class="h-16 flex items-center justify-between px-6 border-b border-gray-200">
+                <a href="{{ route('dashboard') }}" class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center shadow-md">
+                        <span class="text-white font-bold text-lg">R</span>
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="text-lg font-bold text-gray-900">RMS</span>
+                        <span class="text-xs text-gray-500">Restaurant Mgmt</span>
+                    </div>
+                </a>
+                <!-- Mobile close button -->
+                <button @click="sidebarOpen = false" class="lg:hidden text-gray-500 hover:text-gray-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Navigation -->
+            <nav class="flex-1 overflow-y-auto py-6 px-3">
+                <ul class="space-y-4 list-none">
+                <ul class="space-y-2 list-none">
+                <!-- Dashboard -->
+                <li>
+                    <a href="{{ route('dashboard') }}" 
+                       class="nav-item {{ request()->routeIs('dashboard') ? 'active' : '' }}">
+                        <span class="nav-text">Dashboard</span>
+                        @if(request()->routeIs('dashboard'))
+                            <div class="active-indicator"></div>
+                        @endif
+                    </a>
+                </li>
+
+                @can('create requisitions')
+                <li>
+                    <a href="{{ route('chef-requisitions.index') }}" 
+                       class="nav-item {{ request()->routeIs('chef-requisitions.*') ? 'active' : '' }}">
+                        <span class="nav-text">Requisitions</span>
+                        @if(request()->routeIs('chef-requisitions.*'))
+                            <div class="active-indicator"></div>
+                        @endif
+                    </a>
+                </li>
+                @endcan
+
+                @can('create purchase orders')
+                <li>
+                    <a href="{{ route('purchase-orders.index') }}" 
+                       class="nav-item {{ request()->routeIs('purchase-orders.*') ? 'active' : '' }}">
+                        <span class="nav-text">Purchase Orders</span>
+                        @if(request()->routeIs('purchase-orders.*'))
+                            <div class="active-indicator"></div>
+                        @endif
+                    </a>
+                </li>
+                @endcan
+
+                @can('create expenses')
+                <li>
+                    <a href="{{ route('expenses.create') }}" 
+                       class="nav-item {{ request()->routeIs('expenses.*') ? 'active' : '' }}">
+                        <span class="nav-text">Expenses</span>
+                        @if(request()->routeIs('expenses.*'))
+                            <div class="active-indicator"></div>
+                        @endif
+                    </a>
+                </li>
+                @endcan
+
+                @if(auth()->user()->hasAnyRole(['admin', 'manager']))
+                </ul>
+
+                <ul class="space-y-4 list-none mt-2">
+                    <li>
+                        <button @click="financeOpen = !financeOpen" 
+                                class="nav-item w-full text-left {{ request()->routeIs(['payroll.*', 'loans.*', 'employees.*']) ? 'active' : '' }}">
+                            <span class="nav-text">Payroll & HR</span>
+                            <svg class="w-4 h-4 ml-auto transition-transform duration-200" 
+                                 :class="financeOpen ? 'rotate-180' : ''" 
+                                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+
+                        <!-- Submenu -->
+                        <ul x-show="financeOpen" 
+                             x-collapse
+                             class="space-y-4 list-none mt-2">
+                            <li>
+                                <a href="{{ route('payroll.index') }}" 
+                                   class="sub-nav-item {{ request()->routeIs('payroll.*') ? 'active' : '' }}">
+                                    Payroll
+                                </a>
+                            </li>
+                            <li>
+                                <a href="{{ route('loans.index') }}" 
+                                   class="sub-nav-item {{ request()->routeIs('loans.*') ? 'active' : '' }}">
+                                    Loans
+                                </a>
+                            </li>
+                            <li>
+                                <a href="{{ route('employees.salary.index') }}" 
+                                   class="sub-nav-item {{ request()->routeIs('employees.*') ? 'active' : '' }}">
+                                    Salary Management
+                                </a>
+                            </li>
+                        </ul>
+                        </li>
+                    </ul>
+
+                <ul class="space-y-4 list-none mt-2">
+                @endif
+
+                @can('view reports')
+                <li>
+                    <a href="{{ route('reports.index') }}" 
+                       class="nav-item {{ request()->routeIs('reports.*') ? 'active' : '' }}">
+                        <span class="nav-text">Reports</span>
+                        @if(request()->routeIs('reports.*'))
+                            <div class="active-indicator"></div>
+                        @endif
+                    </a>
+                </li>
+                @endcan
+
+                <li>
+                    <a href="{{ route('settings') }}" 
+                       class="nav-item {{ request()->routeIs('settings') ? 'active' : '' }}">
+                        <span class="nav-text">Settings</span>
+                        @if(request()->routeIs('settings'))
+                            <div class="active-indicator"></div>
+                        @endif
+                    </a>
+                </li>
+                </ul>
+            </nav>
+
+            <!-- User Profile Section -->
+            <div class="border-t border-gray-200 p-4">
+                <div class="flex items-center space-x-3 px-2">
+                    <div class="flex-shrink-0">
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center text-white font-semibold">
+                            {{ substr(auth()->user()->name, 0, 1) }}
+                        </div>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-900 truncate">{{ auth()->user()->name }}</p>
+                        <p class="text-xs text-gray-500 truncate">{{ auth()->user()->email }}</p>
+                    </div>
+                </div>
+                <form action="{{ route('logout') }}" method="POST" class="mt-3">
+                    @csrf
+                    <button type="submit" class="w-full flex items-center justify-center px-4 py-2 text-sm font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 transition-colors duration-150">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                        </svg>
+                        Logout
+                    </button>
+                </form>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Mobile Overlay -->
+    <div x-show="sidebarOpen" 
+         @click="sidebarOpen = false"
+         x-transition:enter="transition-opacity ease-linear duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition-opacity ease-linear duration-300"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 z-40 bg-gray-600 bg-opacity-75 lg:hidden"
+         style="display: none;"></div>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+        <!-- Mobile Header -->
+        <header class="lg:hidden bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+            <button @click="sidebarOpen = true" class="text-gray-500 hover:text-gray-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                </svg>
+            </button>
+            <div class="flex items-center space-x-2">
+                <div class="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
+                    <span class="text-white font-bold text-sm">R</span>
+                </div>
+                <span class="text-lg font-bold text-gray-900">RMS</span>
+            </div>
+            <div class="w-6"></div> <!-- Spacer for centering -->
+        </header>
+
+        <!-- Page Content -->
+        <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50">
+            @yield('content')
+        </main>
+    </div>
+</div>
+
+<style>
+    .nav-item {
+        @apply flex items-center px-3 py-3 text-sm font-medium text-gray-700 rounded-lg transition-all duration-150 ease-in-out relative group;
+    }
+
+    .nav-item:hover {
+        @apply bg-gray-50 text-gray-900;
+    }
+
+    .nav-item.active {
+        @apply bg-indigo-50 text-indigo-600;
+    }
+
+    .nav-text {
+        @apply flex-1;
+    }
+
+    .active-indicator {
+        @apply absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-indigo-600 rounded-l-full;
+    }
+
+    .sub-nav-item {
+        @apply block px-3 py-2.5 text-sm text-gray-600 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors duration-150 text-left;
+    }
+
+    .sub-nav-item.active {
+        @apply text-indigo-600 bg-indigo-50 font-medium;
+    }
+</style>

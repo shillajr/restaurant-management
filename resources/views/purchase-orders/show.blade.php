@@ -1,35 +1,10 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Purchase Order #{{ $purchaseOrder->po_number }} - Restaurant Management System</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-</head>
-<body class="bg-gray-50">
-    <!-- Navigation Bar -->
-    <nav class="bg-white shadow-sm">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
-                <div class="flex items-center">
-                    <span class="text-xl font-bold text-gray-900">RMS</span>
-                    <span class="ml-4 text-gray-600">Purchase Order</span>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <a href="{{ route('chef-requisitions.show', $purchaseOrder->requisition_id) }}" class="text-gray-600 hover:text-gray-900">View Requisition</a>
-                    <a href="{{ route('dashboard') }}" class="text-gray-600 hover:text-gray-900">Dashboard</a>
-                    <form method="POST" action="{{ route('logout') }}" class="inline">
-                        @csrf
-                        <button type="submit" class="text-gray-600 hover:text-gray-900">Logout</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </nav>
+@extends('layouts.app')
 
-    <!-- Main Content -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" x-data="{ showUpdateStatusModal: false, newStatus: '{{ $purchaseOrder->status }}' }">
+@section('title', 'Purchase Order #'.$purchaseOrder->po_number)
+
+@section('content')
+<div class="px-4 py-8 sm:px-6 lg:px-10" x-data="{ showReturnModal: false, showRejectModal: false, returnReason: '', rejectionReason: '' }">
+    <div class="mx-auto max-w-7xl">
         <!-- Header -->
         <div class="mb-6">
             <div class="flex items-center justify-between">
@@ -42,18 +17,10 @@
                 </div>
                 <div>
                     @php
-                        $statusColors = [
-                            'open' => 'bg-blue-100 text-blue-800',
-                            'ordered' => 'bg-purple-100 text-purple-800',
-                            'partially_received' => 'bg-yellow-100 text-yellow-800',
-                            'received' => 'bg-green-100 text-green-800',
-                            'closed' => 'bg-gray-100 text-gray-800',
-                            'cancelled' => 'bg-red-100 text-red-800',
-                        ];
-                        $color = $statusColors[$purchaseOrder->status] ?? 'bg-gray-100 text-gray-800';
+                        $workflowColor = \App\Models\PurchaseOrder::workflowStatusColor($purchaseOrder->workflow_status ?? 'pending');
                     @endphp
-                    <span class="px-4 py-2 inline-flex text-sm leading-5 font-semibold rounded-full {{ $color }}">
-                        {{ ucfirst(str_replace('_', ' ', $purchaseOrder->status)) }}
+                    <span class="px-4 py-2 inline-flex text-sm leading-5 font-semibold rounded-full {{ $workflowColor }}">
+                        {{ ucfirst(str_replace('_', ' ', $purchaseOrder->workflow_status ?? 'pending')) }}
                     </span>
                 </div>
             </div>
@@ -75,7 +42,7 @@
             <!-- Main Content -->
             <div class="lg:col-span-2 space-y-6">
                 <!-- PO Header Information -->
-                <div class="bg-white rounded-lg shadow-sm p-6">
+                <div class="bg-white rounded-lg shadow-sm p-6 no-print">
                     <h2 class="text-lg font-semibold text-gray-900 mb-4">Purchase Order Details</h2>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
@@ -137,13 +104,18 @@
                                 <div class="flex items-center justify-between">
                                     <div>
                                         <h3 class="text-base font-semibold text-gray-900">{{ $vendorGroup['vendor_name'] }}</h3>
-                                        <p class="text-sm text-gray-600 mt-1">
-                                            {{ $vendorGroup['item_count'] }} item(s) • 
-                                            Total Qty: {{ number_format($vendorGroup['total_quantity'], 2) }}
-                                        </p>
+                                                        @php($vendorRecord = \App\Models\Vendor::where('name',$vendorGroup['vendor_name'])->first())
+                                                        <p class="text-sm text-gray-600 mt-1 print-hide">
+                                                            {{ $vendorGroup['item_count'] }} item(s) • Total Qty: {{ number_format($vendorGroup['total_quantity'], 2) }}
+                                                            @if($vendorRecord && ($vendorRecord->email || $vendorRecord->phone))
+                                                                <br><span class="text-xs text-gray-500">@if($vendorRecord->email) ✉ {{ $vendorRecord->email }} @endif @if($vendorRecord->phone) • ☎ {{ $vendorRecord->phone }} @endif</span>
+                                                            @else
+                                                                <br><span class="text-xs text-gray-400 italic">No contact info</span>
+                                                            @endif
+                                                        </p>
                                     </div>
                                     <div class="text-right">
-                                        <p class="text-xs text-gray-500 uppercase">Vendor Subtotal</p>
+                                        <p class="text-xs text-gray-500 uppercase print-hide">Vendor Subtotal</p>
                                         <p class="text-lg font-bold text-indigo-900">TZS {{ number_format($vendorGroup['vendor_subtotal'], 2) }}</p>
                                     </div>
                                 </div>
@@ -154,7 +126,7 @@
                                 <table class="min-w-full divide-y divide-gray-200">
                                     <thead class="bg-gray-50">
                                         <tr>
-                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">#</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase print-hide">#</th>
                                             <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Item</th>
                                             <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Quantity</th>
                                             <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Unit</th>
@@ -165,14 +137,14 @@
                                     <tbody class="bg-white divide-y divide-gray-200">
                                         @foreach($vendorGroup['items'] as $index => $item)
                                         <tr class="hover:bg-gray-50">
-                                            <td class="px-4 py-3 text-sm text-gray-900">{{ $index + 1 }}</td>
+                                            <td class="px-4 py-3 text-sm text-gray-900 print-hide">{{ $index + 1 }}</td>
                                             <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ $item['item'] }}</td>
                                             <td class="px-4 py-3 text-sm text-gray-900">{{ $item['quantity'] }}</td>
                                             <td class="px-4 py-3 text-sm text-gray-900">{{ $item['unit'] ?? 'N/A' }}</td>
                                             <td class="px-4 py-3 text-sm text-gray-900">
                                                 TZS {{ number_format($item['price'] ?? 0, 2) }}
                                                 @if(isset($item['originalPrice']) && $item['price'] != $item['originalPrice'])
-                                                    <span class="ml-1 text-xs text-yellow-600" title="Original: TZS {{ number_format($item['originalPrice'], 2) }}">⚠</span>
+                                                    <span class="ml-1 text-xs text-yellow-600 print-hide" title="Original: TZS {{ number_format($item['originalPrice'], 2) }}">⚠</span>
                                                 @endif
                                             </td>
                                             <td class="px-4 py-3 text-sm font-semibold text-gray-900">
@@ -200,8 +172,8 @@
 
                 <!-- PO Total Summary -->
                 <div class="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg shadow-lg p-6 text-white">
-                    <h2 class="text-xl font-semibold mb-4">Purchase Order Summary</h2>
-                    <div class="grid grid-cols-2 gap-4">
+                    <h2 class="text-xl font-semibold mb-4 print-hide">Purchase Order Summary</h2>
+                    <div class="grid grid-cols-2 gap-4 print-hide">
                         <div>
                             <p class="text-indigo-100 text-sm">Total Items</p>
                             <p class="text-2xl font-bold">{{ count($purchaseOrder->items) }}</p>
@@ -245,27 +217,32 @@
             </div>
 
             <!-- Sidebar -->
-            <div class="lg:col-span-1 space-y-6">
-                <!-- Status Management -->
-                <div class="bg-white rounded-lg shadow-sm p-6">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Status Management</h3>
+            <div class="lg:col-span-1 space-y-6 no-print">
+                <!-- Actions -->
+                <div class="bg-white rounded-lg shadow-sm p-6 no-print">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Actions</h3>
                     <div class="space-y-3">
-                        <button @click="showUpdateStatusModal = true"
-                                class="block w-full text-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
-                            Update PO Status
+                        <form method="POST" action="{{ route('purchase-orders.approve', $purchaseOrder->id) }}">
+                            @csrf
+                            <button type="submit" class="block w-full text-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                                ✅ Approve PO & Send to Vendors
+                            </button>
+                        </form>
+                        
+                        <button @click="showReturnModal = true"
+                                class="block w-full text-center px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors">
+                            ↩️ Return for Changes
                         </button>
                         
-                        <div class="text-sm text-gray-600">
-                            <p class="font-medium mb-2">Current Status:</p>
-                            <p class="px-3 py-2 {{ $color }} rounded-lg text-center font-medium">
-                                {{ ucfirst(str_replace('_', ' ', $purchaseOrder->status)) }}
-                            </p>
-                        </div>
+                        <button @click="showRejectModal = true"
+                                class="block w-full text-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                            ❌ Reject PO
+                        </button>
                     </div>
                 </div>
 
                 <!-- Quick Actions -->
-                <div class="bg-white rounded-lg shadow-sm p-6">
+                <div class="bg-white rounded-lg shadow-sm p-6 no-print">
                     <h3 class="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
                     <div class="space-y-3">
                         <button onclick="window.print()" 
@@ -286,7 +263,7 @@
                 </div>
 
                 <!-- Vendor Breakdown -->
-                <div class="bg-white rounded-lg shadow-sm p-6">
+                <div class="bg-white rounded-lg shadow-sm p-6 no-print">
                     <h3 class="text-lg font-semibold text-gray-900 mb-4">Vendor Breakdown</h3>
                     <div class="space-y-3">
                         @foreach($itemsByVendor as $vendorGroup)
@@ -346,40 +323,43 @@
         </div>
     </div>
 
-    <!-- Update Status Modal -->
-    <div x-show="showUpdateStatusModal" 
+    <!-- Return for Changes Modal -->
+    <div x-show="showReturnModal" 
          x-cloak
          class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50"
-         @click.self="showUpdateStatusModal = false">
+         @click.self="showReturnModal = false">
         <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
             <div class="mt-3">
-                <h3 class="text-lg leading-6 font-medium text-gray-900 text-center mb-4">Update PO Status</h3>
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100">
+                    <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg leading-6 font-medium text-gray-900 text-center mt-4">Return PO for Changes</h3>
                 <div class="mt-2 px-7 py-3">
-                    <form method="POST" action="{{ route('purchase-orders.update-status', $purchaseOrder->id) }}">
+                    <p class="text-sm text-gray-500 text-center mb-4">
+                        Please provide a reason for returning this purchase order.
+                    </p>
+                    <form method="POST" action="{{ route('purchase-orders.return', $purchaseOrder->id) }}">
                         @csrf
-                        @method('PATCH')
                         <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">New Status</label>
-                            <select name="status" 
-                                    x-model="newStatus"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-                                <option value="open">Open</option>
-                                <option value="ordered">Ordered</option>
-                                <option value="partially_received">Partially Received</option>
-                                <option value="received">Received</option>
-                                <option value="closed">Closed</option>
-                                <option value="cancelled">Cancelled</option>
-                            </select>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Return Reason *</label>
+                            <textarea name="return_reason" 
+                                      x-model="returnReason"
+                                      rows="4" 
+                                      required
+                                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                                      placeholder="Explain what needs to be changed..."></textarea>
                         </div>
                         <div class="flex space-x-3">
                             <button type="button" 
-                                    @click="showUpdateStatusModal = false"
+                                    @click="showReturnModal = false; returnReason = ''"
                                     class="flex-1 px-4 py-2 bg-gray-200 text-gray-900 rounded-lg hover:bg-gray-300">
                                 Cancel
                             </button>
                             <button type="submit" 
-                                    class="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
-                                Update
+                                    class="flex-1 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700">
+                                Return PO
                             </button>
                         </div>
                     </form>
@@ -388,12 +368,93 @@
         </div>
     </div>
 
-    <style>
-        [x-cloak] { display: none !important; }
-        @media print {
-            nav, .sidebar, button, .no-print { display: none !important; }
-            body { background: white; }
+    <!-- Reject PO Modal -->
+    <div x-show="showRejectModal" 
+         x-cloak
+         class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50"
+         @click.self="showRejectModal = false">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                    <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg leading-6 font-medium text-gray-900 text-center mt-4">Reject Purchase Order</h3>
+                <div class="mt-2 px-7 py-3">
+                    <p class="text-sm text-gray-500 text-center mb-4">
+                        Are you sure you want to reject this purchase order? This action cannot be undone.
+                    </p>
+                    <form method="POST" action="{{ route('purchase-orders.reject', $purchaseOrder->id) }}">
+                        @csrf
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Rejection Reason *</label>
+                            <textarea name="rejection_reason" 
+                                      x-model="rejectionReason"
+                                      rows="4" 
+                                      required
+                                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                      placeholder="Explain why this PO is being rejected..."></textarea>
+                        </div>
+                        <div class="flex space-x-3">
+                            <button type="button" 
+                                    @click="showRejectModal = false; rejectionReason = ''"
+                                    class="flex-1 px-4 py-2 bg-gray-200 text-gray-900 rounded-lg hover:bg-gray-300">
+                                Cancel
+                            </button>
+                            <button type="submit" 
+                                    class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                                Reject PO
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+@push('styles')
+<style>
+    [x-cloak] { display: none !important; }
+    @media print {
+        /* Hide elements */
+        nav, button, .no-print, .print-hide { display: none !important; }
+
+        /* Clean background and colors */
+        body { background: white; color: black; }
+        .bg-indigo-50, .bg-gradient-to-r { background: white !important; }
+        .text-white, .text-indigo-900, .text-indigo-100 { color: black !important; }
+
+        /* Full width for print content */
+        .lg\:col-span-2 {
+            grid-column: span 3 / span 3;
+            max-width: 100%;
         }
-    </style>
-</body>
-</html>
+
+        /* Simplify borders and spacing */
+        .shadow-sm, .shadow-lg { box-shadow: none !important; }
+        .rounded-lg { border-radius: 0 !important; }
+        .border-indigo-100, .border-indigo-400 { border-color: #000 !important; }
+
+        /* Table styling */
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #000; }
+        thead th { background: #f0f0f0 !important; font-weight: bold; }
+        .bg-indigo-50 { background: #f9f9f9 !important; }
+
+        /* Vendor headers */
+        .border-gray-200 { border: 2px solid #000 !important; }
+
+        /* Grand total emphasis */
+        .text-3xl { font-size: 24px; font-weight: bold; }
+
+        /* Page breaks */
+        .bg-white { page-break-inside: avoid; }
+
+        /* Remove hover effects */
+        .hover\:bg-gray-50:hover { background: transparent !important; }
+    }
+</style>
+@endpush
+</div>
+@endsection

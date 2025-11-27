@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Item extends Model
 {
+    use HasFactory;
+
     /**
      * The attributes that are mass assignable.
      *
@@ -44,19 +47,24 @@ class Item extends Model
     }
 
     /**
-     * Check if item is active and available for requisition.
+     * Persist a price change in the history ledger.
      */
-    public function isAvailable(): bool
+    public function logPriceChange($from, $to, string $changedBy): void
     {
-        return $this->status === 'active';
+        $this->priceHistory()->create([
+            'old_price' => $from,
+            'new_price' => $to,
+            'changed_by' => $changedBy,
+            'changed_at' => now(),
+        ]);
     }
 
     /**
-     * Check if stock is low (below reorder level).
+     * Check if item is low on stock.
      */
     public function isLowStock(): bool
     {
-        if (is_null($this->stock) || is_null($this->reorder_level)) {
+        if ($this->reorder_level === null) {
             return false;
         }
         
@@ -64,7 +72,7 @@ class Item extends Model
     }
 
     /**
-     * Scope to get only active items.
+     * Scope to filter active items.
      */
     public function scopeActive($query)
     {
@@ -72,33 +80,11 @@ class Item extends Model
     }
 
     /**
-     * Scope to get items by category.
-     */
-    public function scopeByCategory($query, string $category)
-    {
-        return $query->where('category', $category);
-    }
-
-    /**
-     * Scope to get low stock items.
+     * Scope to filter low stock items.
      */
     public function scopeLowStock($query)
     {
-        return $query->whereNotNull('stock')
-                    ->whereNotNull('reorder_level')
-                    ->whereRaw('stock <= reorder_level');
-    }
-
-    /**
-     * Log price change to history.
-     */
-    public function logPriceChange(float $oldPrice, float $newPrice, ?string $changedBy = null): void
-    {
-        $this->priceHistory()->create([
-            'old_price' => $oldPrice,
-            'new_price' => $newPrice,
-            'changed_by' => $changedBy,
-            'changed_at' => now(),
-        ]);
+        return $query->whereNotNull('reorder_level')
+                    ->whereColumn('stock', '<=', 'reorder_level');
     }
 }

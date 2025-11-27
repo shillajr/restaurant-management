@@ -3,10 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\ChefRequisition;
-use App\Models\PurchaseOrder;
 use Illuminate\Http\Request;
+use App\Models\Item;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 
 class ChefRequisitionController extends Controller
 {
@@ -64,6 +63,16 @@ class ChefRequisitionController extends Controller
             ->paginate(15)
             ->withQueryString();
 
+        if (str_starts_with($request->path(), 'api')) {
+            return response()->json([
+                'data' => $requisitions->items(),
+                'current_page' => $requisitions->currentPage(),
+                'last_page' => $requisitions->lastPage(),
+                'per_page' => $requisitions->perPage(),
+                'total' => $requisitions->total(),
+            ]);
+        }
+
         return view('chef-requisitions.index', compact('requisitions'));
     }
 
@@ -83,16 +92,34 @@ class ChefRequisitionController extends Controller
         $validated = $request->validate([
             'requested_for_date' => 'required|date|after:today',
             'items' => 'required|array|min:1',
-            'items.*.item' => 'required|string',
+            'items.*.item_id' => 'required|integer|exists:items,id',
             'items.*.quantity' => 'required|numeric|min:0.01',
-            'items.*.unit' => 'required|string',
+            'items.*.uom' => 'required|string',
+            'items.*.price' => 'required|numeric|min:0',
             'note' => 'nullable|string',
         ]);
+
+        // Normalize items to expected internal structure (add item name & unit alias)
+        $normalizedItems = collect($validated['items'])->map(function ($row) {
+            $itemModel = Item::find($row['item_id']);
+            return [
+                'item_id' => $row['item_id'],
+                'item' => $itemModel->name ?? ($row['item_id'] ?? 'Unknown'),
+                'vendor' => $row['vendor'] ?? ($itemModel->vendor ?? null),
+                'quantity' => (float)$row['quantity'],
+                'unit' => $row['uom'] ?? ($itemModel->uom ?? null),
+                'uom' => $row['uom'] ?? ($itemModel->uom ?? null),
+                'price' => (float)$row['price'],
+                'defaultPrice' => isset($row['default_price']) ? (float)$row['default_price'] : (float)($itemModel->price ?? $row['price']),
+                'priceEdited' => isset($row['price_edited']) ? ($row['price_edited'] === '1') : false,
+                'originalPrice' => isset($row['originalPrice']) ? (float)$row['originalPrice'] : (float)($itemModel->price ?? $row['price']),
+            ];
+        })->toArray();
 
         $requisition = ChefRequisition::create([
             'chef_id' => Auth::id(),
             'requested_for_date' => $validated['requested_for_date'],
-            'items' => $validated['items'],
+            'items' => $normalizedItems,
             'note' => $validated['note'] ?? null,
             'status' => 'pending'
         ]);
@@ -102,6 +129,10 @@ class ChefRequisitionController extends Controller
             ->causedBy(Auth::user())
             ->log('Chef requisition created');
 
+        if (str_starts_with($request->path(), 'api')) {
+            return response()->json($requisition->load('chef'), 201);
+        }
+
         return redirect()->route('chef-requisitions.index')
             ->with('success', 'Requisition created successfully.');
     }
@@ -109,10 +140,14 @@ class ChefRequisitionController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(ChefRequisition $chefRequisition)
+    public function show(Request $request, ChefRequisition $chefRequisition)
     {
-        $chefRequisition->load(['chef', 'checker']);
+        $chefRequisition->load(['chef', 'checker', 'purchaseOrder']);
         
+        if ($request->expectsJson() || $request->wantsJson()) {
+            return response()->json($chefRequisition);
+        }
+
         return view('chef-requisitions.show', compact('chefRequisition'));
     }
 
@@ -166,11 +201,26 @@ class ChefRequisitionController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(ChefRequisition $chefRequisition)
+    public function destroy(Request $request, ChefRequisition $chefRequisition)
     {
+        // Status check takes precedence: only pending can be deleted
         if ($chefRequisition->status !== 'pending') {
+            if (str_starts_with($request->path(), 'api')) {
+                return response()->json([
+                    'message' => 'Only pending requisitions can be deleted.'
+                ], 422);
+            }
             return redirect()->route('chef-requisitions.index')
                 ->with('error', 'Only pending requisitions can be deleted.');
+        }
+
+        // Ownership check: only owner can delete pending requisitions
+        $isOwner = Auth::id() === $chefRequisition->chef_id;
+        if (!$isOwner) {
+            if (str_starts_with($request->path(), 'api')) {
+                return response()->json(['message' => 'Forbidden'], 403);
+            }
+            return redirect()->route('chef-requisitions.index')->with('error', 'Forbidden');
         }
 
         activity()
@@ -180,25 +230,30 @@ class ChefRequisitionController extends Controller
 
         $chefRequisition->delete();
 
+        if (str_starts_with($request->path(), 'api')) {
+            return response()->json(['message' => 'Requisition deleted successfully.'], 200);
+        }
+
         return redirect()->route('chef-requisitions.index')
             ->with('success', 'Requisition deleted successfully.');
     }
 
     /**
-     * Approve the requisition and generate Purchase Order
+     * Approve the requisition
      */
     public function approve(Request $request, ChefRequisition $chefRequisition)
     {
         if ($chefRequisition->status !== 'pending') {
+            if (str_starts_with($request->path(), 'api')) {
+                return response()->json(['message' => 'Only pending requisitions can be approved.'], 422);
+            }
             return back()->with('error', 'Only pending requisitions can be approved.');
         }
 
         $validated = $request->validate([
-            'requested_delivery_date' => 'nullable|date|after:today',
             'approval_notes' => 'nullable|string|max:1000',
         ]);
 
-        DB::beginTransaction();
         try {
             // Update requisition status
             $chefRequisition->update([
@@ -207,47 +262,22 @@ class ChefRequisitionController extends Controller
                 'checked_at' => now(),
             ]);
 
-            // Calculate totals
-            $items = $chefRequisition->items;
-            $totalQuantity = collect($items)->sum('quantity');
-            $subtotal = collect($items)->sum(function($item) {
-                return ($item['price'] ?? 0) * ($item['quantity'] ?? 0);
-            });
-            $tax = 0; // Can be calculated based on business rules
-            $otherCharges = 0;
-            $grandTotal = $subtotal + $tax + $otherCharges;
-
-            // Create Purchase Order
-            $po = PurchaseOrder::create([
-                'po_number' => PurchaseOrder::generatePONumber(),
-                'requisition_id' => $chefRequisition->id,
-                'created_by' => $chefRequisition->chef_id,
-                'approved_by' => Auth::id(),
-                'approved_at' => now(),
-                'requested_delivery_date' => $validated['requested_delivery_date'] ?? null,
-                'items' => $items,
-                'total_quantity' => $totalQuantity,
-                'subtotal' => $subtotal,
-                'tax' => $tax,
-                'other_charges' => $otherCharges,
-                'grand_total' => $grandTotal,
-                'status' => 'open',
-                'notes' => $validated['approval_notes'] ?? null,
-            ]);
-
             activity()
                 ->performedOn($chefRequisition)
                 ->causedBy(Auth::user())
-                ->withProperties(['po_number' => $po->po_number, 'po_id' => $po->id])
-                ->log('Chef requisition approved and PO created');
+                ->log('Chef requisition approved');
 
-            DB::commit();
+            if (str_starts_with($request->path(), 'api')) {
+                return response()->json([
+                    'message' => 'Requisition approved successfully',
+                    'requisition' => $chefRequisition
+                ], 200);
+            }
 
-            return redirect()->route('purchase-orders.show', $po->id)
-                ->with('success', "Requisition approved successfully. Purchase Order {$po->po_number} has been created.");
+            return redirect()->route('chef-requisitions.show', $chefRequisition->id)
+                ->with('success', "Requisition approved successfully.");
 
         } catch (\Exception $e) {
-            DB::rollBack();
             return back()->with('error', 'Failed to approve requisition: ' . $e->getMessage());
         }
     }
@@ -258,6 +288,9 @@ class ChefRequisitionController extends Controller
     public function reject(Request $request, ChefRequisition $chefRequisition)
     {
         if ($chefRequisition->status !== 'pending') {
+            if (str_starts_with($request->path(), 'api')) {
+                return response()->json(['message' => 'Only pending requisitions can be rejected.'], 422);
+            }
             return back()->with('error', 'Only pending requisitions can be rejected.');
         }
 
@@ -277,6 +310,13 @@ class ChefRequisitionController extends Controller
             ->causedBy(Auth::user())
             ->withProperties(['rejection_reason' => $validated['rejection_reason']])
             ->log('Chef requisition rejected');
+
+        if (str_starts_with($request->path(), 'api')) {
+            return response()->json([
+                'message' => 'Requisition rejected',
+                'requisition' => $chefRequisition
+            ], 200);
+        }
 
         return back()->with('success', 'Requisition rejected successfully.');
     }

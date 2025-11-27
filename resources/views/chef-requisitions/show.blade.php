@@ -1,35 +1,10 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Requisition #{{ $chefRequisition->id }} - Restaurant Management System</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-</head>
-<body class="bg-gray-50" x-data="{ showApproveModal: false, showRejectModal: false, showRequestChangesModal: false, rejectionReason: '', changeRequest: '' }">
-    <!-- Navigation Bar -->
-    <nav class="bg-white shadow-sm">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
-                <div class="flex items-center">
-                    <span class="text-xl font-bold text-gray-900">RMS</span>
-                    <span class="ml-4 text-gray-600">Requisition Details</span>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <a href="{{ route('chef-requisitions.index') }}" class="text-gray-600 hover:text-gray-900">Back to List</a>
-                    <a href="{{ route('dashboard') }}" class="text-gray-600 hover:text-gray-900">Dashboard</a>
-                    <form method="POST" action="{{ route('logout') }}" class="inline">
-                        @csrf
-                        <button type="submit" class="text-gray-600 hover:text-gray-900">Logout</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </nav>
+@extends('layouts.app')
 
-    <!-- Main Content -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+@section('title', 'Requisition #'.$chefRequisition->id)
+
+@section('content')
+<div class="px-4 py-8 sm:px-6 lg:px-10" x-data="{ showApproveModal: false, showRejectModal: false, showRequestChangesModal: false, showGeneratePOModal: false, rejectionReason: '', changeRequest: '' }">
+    <div class="mx-auto max-w-7xl">
         <!-- Header -->
         <div class="mb-6">
             <div class="flex items-center justify-between">
@@ -223,6 +198,27 @@
                         </a>
                         @endif
 
+                        <!-- Convert to PO Action (for approved requisitions) -->
+                        @if($chefRequisition->status === 'approved')
+                            @if(!$chefRequisition->purchaseOrder)
+                            <!-- Test: Simple form without modal -->
+                            <form method="POST" action="{{ route('purchase-orders.store') }}" 
+                                  onsubmit="console.log('Direct form submitting'); return confirm('Create Purchase Order from this requisition?');">
+                                @csrf
+                                <input type="hidden" name="requisition_id" value="{{ $chefRequisition->id }}">
+                                <button type="submit"
+                                        class="block w-full text-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                                    📋 Generate Purchase Order
+                                </button>
+                            </form>
+                            @else
+                            <a href="{{ route('purchase-orders.show', $chefRequisition->purchaseOrder->id) }}"
+                               class="block w-full text-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                                👁 View Purchase Order
+                            </a>
+                            @endif
+                        @endif
+
                         <a href="{{ route('chef-requisitions.index') }}" 
                            class="block w-full text-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
                             Back to List
@@ -296,7 +292,7 @@
                 <h3 class="text-lg leading-6 font-medium text-gray-900 text-center mt-4">Approve Requisition</h3>
                 <div class="mt-2 px-7 py-3">
                     <p class="text-sm text-gray-500 text-center">
-                        Are you sure you want to approve this requisition? This will automatically generate a Purchase Order with all items.
+                        Are you sure you want to approve this requisition?
                     </p>
                 </div>
                 <div class="items-center px-4 py-3">
@@ -311,6 +307,46 @@
                             <button type="submit" 
                                     class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
                                 Approve
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Generate PO Modal -->
+    <div x-show="showGeneratePOModal" 
+         x-cloak
+         class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50"
+         @click.self="showGeneratePOModal = false">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
+                    <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg leading-6 font-medium text-gray-900 text-center mt-4">Generate Purchase Order</h3>
+                <div class="mt-2 px-7 py-3">
+                    <p class="text-sm text-gray-500 text-center">
+                        This will create a Purchase Order from this approved requisition. Are you sure you want to continue?
+                    </p>
+                </div>
+                <div class="items-center px-4 py-3">
+                    <form method="POST" action="{{ route('purchase-orders.store') }}" 
+                          @submit="console.log('Form submitting...', $event.target.action)">
+                        @csrf
+                        <input type="hidden" name="requisition_id" value="{{ $chefRequisition->id }}">
+                        <div class="flex space-x-3">
+                            <button type="button" 
+                                    @click="showGeneratePOModal = false"
+                                    class="flex-1 px-4 py-2 bg-gray-200 text-gray-900 rounded-lg hover:bg-gray-300">
+                                Cancel
+                            </button>
+                            <button type="submit" 
+                                    class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                                Generate PO
                             </button>
                         </div>
                     </form>
@@ -403,8 +439,23 @@
         </div>
     </div>
 
-    <style>
-        [x-cloak] { display: none !important; }
-    </style>
-</body>
-</html>
+@push('styles')
+<style>
+    [x-cloak] { display: none !important; }
+</style>
+@endpush
+
+@push('scripts')
+<script>
+    // Debug CSRF token
+    document.addEventListener('DOMContentLoaded', function() {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        console.log('CSRF Token from meta:', csrfToken);
+        console.log('CSRF Token in form:', document.querySelector('input[name="_token"]')?.value);
+        console.log('Current user auth status - Check blade:', '{{ auth()->check() ? "Authenticated as ".auth()->user()->name : "Not authenticated" }}');
+        console.log('Session ID:', '{{ session()->getId() }}');
+    });
+</script>
+@endpush
+</div>
+@endsection

@@ -195,5 +195,12 @@ class DatabaseSeeder extends Seeder
 
         $this->command->info('Roles, permissions, and test users created successfully!');
         $this->command->info('Login credentials (all users): password');
+
+        // Seed core master data
+        $this->call([
+            ItemSeeder::class,
+            VendorSeeder::class,
+        ]);
+        $this->command->info('Item and Vendor master data seeded.');
     }
 }

@@ -72,7 +72,8 @@ class ChefRequisition extends Model
      */
     public function purchaseOrder(): HasOne
     {
-        return $this->hasOne(PurchaseOrder::class);
+        // Explicitly set foreign key to match PurchaseOrder schema
+        return $this->hasOne(PurchaseOrder::class, 'requisition_id', 'id');
     }
 
     /**

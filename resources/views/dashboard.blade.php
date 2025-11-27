@@ -1,40 +1,15 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Dashboard - Restaurant Management</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-</head>
-<body class="bg-gray-50">
-    <div class="min-h-screen">
-        <!-- Header -->
-        <header class="bg-white shadow">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <h1 class="text-3xl font-bold text-gray-900">Dashboard</h1>
-                        <p class="mt-1 text-sm text-gray-600">Welcome back, {{ auth()->user()->name }}</p>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <span class="px-3 py-1 text-sm font-medium rounded-full bg-indigo-100 text-indigo-800">
-                            {{ ucfirst(auth()->user()->roles->first()->name ?? 'User') }}
-                        </span>
-                        <span class="text-sm text-gray-600">{{ now()->format('l, F j, Y') }}</span>
-                        <form action="{{ route('logout') }}" method="POST">
-                            @csrf
-                            <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors">
-                                Logout
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </header>
+@extends('layouts.app')
 
-        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+@section('title', 'Dashboard')
+
+@section('content')
+    @include('partials.page-header', ['pageDescription' => 'Welcome back, ' . auth()->user()->name])
+    @section('page-title', 'Dashboard')
+    @section('page-actions')
+        <span class="text-sm text-gray-600">{{ now()->format('l, F j, Y') }}</span>
+    @endsection
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <!-- KPI Cards -->
             @if(auth()->user()->hasAnyRole(['admin', 'manager', 'finance']))
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -252,5 +227,4 @@
             @endif
         </main>
     </div>
-</body>
-</html>
+@endsection

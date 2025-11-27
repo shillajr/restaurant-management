@@ -27,6 +27,8 @@ class PurchaseOrder extends Model
         'other_charges',
         'grand_total',
         'status',
+        // New workflow-centric status distinct from legacy status column
+        'workflow_status',
         'notes',
         // Legacy fields (kept for compatibility)
         'assigned_to',
@@ -49,6 +51,31 @@ class PurchaseOrder extends Model
         'purchased_at' => 'datetime',
         'total_amount' => 'decimal:2',
     ];
+
+    /**
+     * Human-friendly workflow statuses mapping.
+     */
+    public const WORKFLOW_STATUSES = [
+        'pending',        // PO drafted from approved requisition, internal review before sending
+        'sent_to_vendor', // PO dispatched to vendor
+        'returned',       // Vendor responded with changes / questions
+        'approved',       // Final vendor confirmation / internal final approval
+        'rejected',       // Rejected internally or by vendor
+    ];
+
+    /**
+     * Get color classes for workflow statuses.
+     */
+    public static function workflowStatusColor(string $status): string
+    {
+        return [
+            'pending' => 'bg-yellow-100 text-yellow-800',
+            'sent_to_vendor' => 'bg-blue-100 text-blue-800',
+            'returned' => 'bg-purple-100 text-purple-800',
+            'approved' => 'bg-green-100 text-green-800',
+            'rejected' => 'bg-red-100 text-red-800',
+        ][$status] ?? 'bg-gray-100 text-gray-800';
+    }
 
     /**
      * Generate a unique PO number

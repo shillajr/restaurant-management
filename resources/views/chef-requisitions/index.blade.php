@@ -1,34 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Requisitions - Restaurant Management System</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-</head>
-<body class="bg-gray-50">
-    <!-- Navigation Bar -->
-    <nav class="bg-white shadow-sm">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
-                <div class="flex items-center">
-                    <span class="text-xl font-bold text-gray-900">RMS</span>
-                    <span class="ml-4 text-gray-600">Chef Requisitions</span>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <a href="{{ route('dashboard') }}" class="text-gray-600 hover:text-gray-900">Dashboard</a>
-                    <form method="POST" action="{{ route('logout') }}" class="inline">
-                        @csrf
-                        <button type="submit" class="text-gray-600 hover:text-gray-900">Logout</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </nav>
+@extends('layouts.app')
 
-    <!-- Main Content -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" x-data="requisitionsPage()">
+@section('title', 'Chef Requisitions')
+
+@section('content')
+<div class="px-4 py-8 sm:px-6 lg:px-10" x-data="requisitionsPage()">
         <!-- Header with Title and Create Button -->
         <div class="flex justify-between items-center mb-6">
             <div>
@@ -328,15 +303,16 @@
             @endif
         </div>
     </div>
+@endsection
 
-    <script>
-        function requisitionsPage() {
-            return {
-                init() {
-                    console.log('Requisitions page loaded');
-                }
+@push('scripts')
+<script>
+    function requisitionsPage() {
+        return {
+            init() {
+                console.log('Requisitions page loaded');
             }
         }
-    </script>
-</body>
-</html>
+    }
+</script>
+@endpush

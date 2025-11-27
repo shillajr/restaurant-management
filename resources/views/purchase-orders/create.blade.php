@@ -7,6 +7,15 @@
     <title>Create Purchase Order - Restaurant Management</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    @isset($vendors)
+    <script>
+        window.vendorContacts = @json(
+            ($vendors ?? collect())->mapWithKeys(function($v){
+                return [$v->name => ['email' => $v->email, 'phone' => $v->phone]];
+            })
+        );
+    </script>
+    @endisset
 </head>
 <body class="bg-gray-50">
     <div class="min-h-screen py-8">
@@ -27,10 +36,12 @@
 
             <!-- Form -->
             <div class="bg-white shadow-md rounded-lg overflow-hidden">
-                <form action="{{ route('purchase-orders.store') }}" method="POST" 
-                      x-data="purchaseOrderForm()"
+                                <form action="{{ route('purchase-orders.store') }}" method="POST" 
+                                            x-data="purchaseOrderForm()"
                       class="p-6 space-y-6">
                     @csrf
+                                        <!-- Bind selected requisition to submission -->
+                                        <input type="hidden" name="requisition_id" :value="selectedRequisitionId">
 
                     <!-- Display Validation Errors -->
                     @if ($errors->any())
@@ -59,11 +70,20 @@
                             Link to Requisition (Optional)
                         </label>
                         <select name="requisition_id" id="requisition_id" 
+                                x-model="selectedRequisitionId"
+                                @change="loadRequisitionPreview()"
                                 class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                             <option value="">Create standalone purchase order</option>
-                            <option value="1">REQ-001 - Kitchen Supplies (Approved)</option>
-                            <option value="2">REQ-002 - Fresh Produce (Approved)</option>
-                            <option value="3">REQ-003 - Meat & Seafood (Approved)</option>
+                            @if(isset($approvedRequisitions))
+                                @foreach($approvedRequisitions as $req)
+                                    <option value="{{ $req->id }}">
+                                        REQ-{{ str_pad($req->id, 3, '0', STR_PAD_LEFT) }} - {{ $req->note ?? 'Approved Requisition' }} (Approved)
+                                        @if($req->purchaseOrder)
+                                            — PO Exists: {{ $req->purchaseOrder->po_number }}
+                                        @endif
+                                    </option>
+                                @endforeach
+                            @endif
                         </select>
                         <p class="mt-1 text-xs text-gray-500">Select an approved requisition to auto-populate items, or create a standalone order</p>
                         @error('requisition_id')
@@ -82,7 +102,7 @@
                                 </label>
                                 <select name="supplier_id" id="supplier_id" 
                                         class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                                        required>
+                                        :disabled="selectedRequisitionId">
                                     <option value="">Select a supplier</option>
                                     <option value="1">ABC Food Distributors</option>
                                     <option value="2">Fresh Farm Produce</option>
@@ -93,6 +113,7 @@
                                 @error('supplier_id')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
+                                <p x-show="selectedRequisitionId" class="mt-1 text-xs text-gray-500">Vendors will be taken from the requisition items.</p>
                             </div>
 
                             <!-- Assigned To -->
@@ -102,7 +123,7 @@
                                 </label>
                                 <select name="assigned_to" id="assigned_to" 
                                         class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                                        required>
+                                        :disabled="selectedRequisitionId">
                                     <option value="">Select purchaser</option>
                                     <option value="1">John Purchaser</option>
                                     <option value="2">Sarah Buyer</option>
@@ -110,168 +131,128 @@
                                 @error('assigned_to')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
+                                <p x-show="selectedRequisitionId" class="mt-1 text-xs text-gray-500">This field is disabled when using an approved requisition.</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Vendor list from approved requisition -->
+                        <div x-show="requisitionPreview" class="mt-3">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Vendors From Requisition</label>
+                            <div class="bg-gray-50 border border-gray-200 rounded-md p-3 text-sm text-gray-800">
+                                <template x-for="group in requisitionPreview.groups" :key="group.vendor_name">
+                                    <div class="flex justify-between py-1 border-b last:border-0 border-gray-200">
+                                        <span x-text="group.vendor_name"></span>
+                                        <span class="text-gray-600">Items: <span x-text="group.item_count"></span> • Qty: <span x-text="group.total_quantity.toFixed(2)"></span></span>
+                                    </div>
+                                </template>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Order Items -->
-                    <div x-data="{ 
-                        items: [{ id: 1, description: '', quantity: '', unit: '', unit_price: '', total: 0 }],
-                        addItem() {
-                            this.items.push({ 
-                                id: this.items.length + 1, 
-                                description: '', 
-                                quantity: '', 
-                                unit: '', 
-                                unit_price: '', 
-                                total: 0 
-                            });
-                        },
-                        removeItem(index) {
-                            if (this.items.length > 1) {
-                                this.items.splice(index, 1);
-                            }
-                        },
-                        calculateTotal(item) {
-                            const qty = parseFloat(item.quantity) || 0;
-                            const price = parseFloat(item.unit_price) || 0;
-                            item.total = (qty * price).toFixed(2);
-                            return item.total;
-                        },
-                        getGrandTotal() {
-                            return this.items.reduce((sum, item) => {
-                                return sum + (parseFloat(item.total) || 0);
-                            }, 0).toFixed(2);
-                        }
-                    }">
-                        <div class="flex items-center justify-between mb-4">
+                    <!-- Order Items (disabled for manual editing) -->
+                    <div class="mb-4">
+                        <div class="flex items-center justify-between mb-2">
                             <label class="block text-sm font-medium text-gray-700">
-                                Order Items <span class="text-red-500">*</span>
+                                Order Items
                             </label>
-                            <button type="button" 
-                                    @click="addItem()"
-                                    class="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200">
-                                <svg class="mr-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                                </svg>
-                                Add Item
-                            </button>
                         </div>
-
-                        <div class="border border-gray-300 rounded-md overflow-hidden">
-                            <div class="overflow-x-auto">
-                                <table class="min-w-full divide-y divide-gray-200">
-                                    <thead class="bg-gray-50">
-                                        <tr>
-                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">Quantity</th>
-                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28">Unit</th>
-                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Unit Price</th>
-                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Total</th>
-                                            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-16">Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="bg-white divide-y divide-gray-200">
-                                        <template x-for="(item, index) in items" :key="item.id">
-                                            <tr>
-                                                <td class="px-4 py-3">
-                                                    <input type="text" 
-                                                           :name="'items[' + index + '][description]'" 
-                                                           x-model="item.description"
-                                                           class="block w-full px-2 py-1 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
-                                                           placeholder="Item description"
-                                                           required>
-                                                </td>
-                                                <td class="px-4 py-3">
-                                                    <input type="number" 
-                                                           :name="'items[' + index + '][quantity]'" 
-                                                           x-model="item.quantity"
-                                                           @input="calculateTotal(item)"
-                                                           step="0.01"
-                                                           min="0"
-                                                           class="block w-full px-2 py-1 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
-                                                           placeholder="0"
-                                                           required>
-                                                </td>
-                                                <td class="px-4 py-3">
-                                                    <select :name="'items[' + index + '][unit]'" 
-                                                            x-model="item.unit"
-                                                            class="block w-full px-2 py-1 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
-                                                            required>
-                                                        <option value="">Unit</option>
-                                                        <option value="kg">kg</option>
-                                                        <option value="lbs">lbs</option>
-                                                        <option value="g">g</option>
-                                                        <option value="oz">oz</option>
-                                                        <option value="L">L</option>
-                                                        <option value="ml">ml</option>
-                                                        <option value="pcs">pcs</option>
-                                                        <option value="box">box</option>
-                                                        <option value="case">case</option>
-                                                    </select>
-                                                </td>
-                                                <td class="px-4 py-3">
-                                                    <div class="relative">
-                                                        <div class="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
-                                                            <span class="text-gray-500 text-sm">$</span>
-                                                        </div>
-                                                        <input type="number" 
-                                                               :name="'items[' + index + '][unit_price]'" 
-                                                               x-model="item.unit_price"
-                                                               @input="calculateTotal(item)"
-                                                               step="0.01"
-                                                               min="0"
-                                                               class="block w-full pl-6 pr-2 py-1 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
-                                                               placeholder="0.00"
-                                                               required>
-                                                    </div>
-                                                </td>
-                                                <td class="px-4 py-3">
-                                                    <div class="text-sm font-medium text-gray-900">
-                                                        $<span x-text="calculateTotal(item)">0.00</span>
-                                                    </div>
-                                                </td>
-                                                <td class="px-4 py-3 text-center">
-                                                    <button type="button" 
-                                                            @click="removeItem(index)"
-                                                            x-show="items.length > 1"
-                                                            class="text-red-600 hover:text-red-900">
-                                                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                                        </svg>
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        </template>
-                                    </tbody>
-                                    <tfoot class="bg-gray-50">
-                                        <tr>
-                                            <td colspan="4" class="px-4 py-3 text-right text-sm font-medium text-gray-900">
-                                                Grand Total:
-                                            </td>
-                                            <td class="px-4 py-3 text-sm font-bold text-gray-900">
-                                                $<span x-text="getGrandTotal()">0.00</span>
-                                            </td>
-                                            <td></td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                            </div>
+                        <div class="bg-yellow-50 border border-yellow-300 text-yellow-800 text-sm rounded-md p-3">
+                            Items are derived from the approved requisition and cannot be edited here.
+                            Please select an approved requisition above to preview grouped items below.
                         </div>
                     </div>
+
+                    <!-- Requisition Vendor Grouping Preview -->
+                    <template x-if="requisitionPreview">
+                        <div class="bg-white shadow-md rounded-lg overflow-hidden">
+                            <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                                <div>
+                                    <h3 class="text-lg font-semibold text-gray-900">PO Preview from Requisition #<span x-text="requisitionPreview.id"></span></h3>
+                                    <p class="text-sm text-gray-600">Chef: <span x-text="requisitionPreview.chef"></span> • Requested For: <span x-text="requisitionPreview.requested_for_date"></span></p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-xs text-gray-500 uppercase">Subtotal</p>
+                                    <p class="text-lg font-bold text-indigo-600">TZS <span x-text="requisitionPreview.subtotal.toFixed(2)"></span></p>
+                                </div>
+                            </div>
+                            <div class="p-6 space-y-6">
+                                <template x-for="group in requisitionPreview.groups" :key="group.vendor_name">
+                                    <div class="border border-gray-200 rounded-lg overflow-hidden">
+                                        <div class="bg-indigo-50 px-4 py-3 border-b border-indigo-100 flex items-center justify-between">
+                                            <div>
+                                                <h4 class="text-base font-semibold text-gray-900" x-text="group.vendor_name"></h4>
+                                                <template x-if="window.vendorContacts && window.vendorContacts[group.vendor_name]">
+                                                    <p class="text-xs text-gray-600">
+                                                        <span x-text="window.vendorContacts[group.vendor_name].email"></span> •
+                                                        <span x-text="window.vendorContacts[group.vendor_name].phone"></span>
+                                                    </p>
+                                                </template>
+                                                <p class="text-xs text-gray-600 mt-1"><span x-text="group.item_count"></span> item(s) • Total Qty: <span x-text="group.total_quantity.toFixed(2)"></span></p>
+                                            </div>
+                                            <div class="text-right">
+                                                <p class="text-xs text-gray-500 uppercase">Vendor Subtotal</p>
+                                                <p class="text-lg font-bold text-indigo-900">TZS <span x-text="group.vendor_subtotal.toFixed(2)"></span></p>
+                                            </div>
+                                        </div>
+                                        <div class="overflow-x-auto">
+                                            <table class="min-w-full divide-y divide-gray-200">
+                                                <thead class="bg-gray-50">
+                                                    <tr>
+                                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Item</th>
+                                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Qty</th>
+                                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">UoM</th>
+                                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Unit Price</th>
+                                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Line Total</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody class="bg-white divide-y divide-gray-200">
+                                                    <template x-for="it in group.items" :key="it.item_id ?? it.item">
+                                                        <tr>
+                                                            <td class="px-4 py-3 text-sm font-medium text-gray-900" x-text="it.item ?? it.item_id"></td>
+                                                            <td class="px-4 py-3 text-sm text-gray-900" x-text="(parseFloat(it.quantity||0)).toFixed(2)"></td>
+                                                            <td class="px-4 py-3 text-sm text-gray-900" x-text="it.uom ?? it.unit"></td>
+                                                            <td class="px-4 py-3 text-sm text-gray-900">TZS <span x-text="(parseFloat(it.price||0)).toFixed(2)"></span></td>
+                                                            <td class="px-4 py-3 text-sm font-semibold text-gray-900">TZS <span x-text="(parseFloat(it.price||0)*parseFloat(it.quantity||0)).toFixed(2)"></span></td>
+                                                        </tr>
+                                                    </template>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </template>
+                                <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                                    <div class="grid grid-cols-3 gap-4">
+                                        <div>
+                                            <p class="text-xs text-gray-500">Total Items</p>
+                                            <p class="text-lg font-semibold" x-text="requisitionPreview.total_items"></p>
+                                        </div>
+                                        <div>
+                                            <p class="text-xs text-gray-500">Total Quantity</p>
+                                            <p class="text-lg font-semibold" x-text="requisitionPreview.total_quantity.toFixed(2)"></p>
+                                        </div>
+                                        <div>
+                                            <p class="text-xs text-gray-500">Grand Subtotal</p>
+                                            <p class="text-lg font-bold text-indigo-600">TZS <span x-text="requisitionPreview.subtotal.toFixed(2)"></span></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
 
                     <!-- Additional Information -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <!-- Expected Delivery Date -->
                         <div>
-                            <label for="expected_delivery" class="block text-sm font-medium text-gray-700 mb-2">
-                                Expected Delivery Date
+                            <label for="requested_delivery_date" class="block text-sm font-medium text-gray-700 mb-2">
+                                Requested Delivery Date
                             </label>
                             <input type="date" 
-                                   name="expected_delivery" 
-                                   id="expected_delivery" 
+                                   name="requested_delivery_date" 
+                                   id="requested_delivery_date" 
+                                   x-model="requestedDeliveryDate"
                                    class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                            @error('expected_delivery')
+                            @error('requested_delivery_date')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
@@ -327,6 +308,13 @@
                         @enderror
                     </div>
 
+                    <!-- Duplicate PO warning -->
+                    <template x-if="requisitionPreview && requisitionPreview.purchase_order">
+                        <div class="bg-red-50 border border-red-200 text-red-800 text-sm rounded-md p-3">
+                            A purchase order already exists for this requisition. Creating another is disabled.
+                        </div>
+                    </template>
+
                     <!-- Form Actions -->
                     <div class="flex items-center justify-between pt-6 border-t border-gray-200">
                         <div class="flex items-center space-x-4">
@@ -339,10 +327,14 @@
                             <a href="{{ route('dashboard') }}" class="px-6 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                                 Cancel
                             </a>
-                            <button type="submit" name="action" value="draft" class="px-6 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            <button type="submit" name="action" value="draft" 
+                                    :disabled="!selectedRequisitionId || (requisitionPreview && requisitionPreview.purchase_order)"
+                                    class="px-6 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
                                 Save as Draft
                             </button>
-                            <button type="submit" name="action" value="submit" class="px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            <button type="submit" name="action" value="submit" 
+                                    :disabled="!selectedRequisitionId || (requisitionPreview && requisitionPreview.purchase_order)"
+                                    class="px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
                                 <span class="flex items-center">
                                     <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -351,6 +343,9 @@
                                 </span>
                             </button>
                         </div>
+                    </div>
+
+                    
                     </div>
                 </form>
             </div>
@@ -376,8 +371,70 @@
     <script>
         function purchaseOrderForm() {
             return {
+                selectedRequisitionId: '{{ $selectedRequisition->id ?? '' }}',
+                requisitionPreview: null,
+                requestedDeliveryDate: '',
                 init() {
-                    console.log('Purchase order form initialized');
+                    if (this.selectedRequisitionId) {
+                        this.loadRequisitionPreview();
+                    }
+                },
+                items: [{ id: 1, description: '', quantity: '', unit: '', unit_price: '', total: 0 }],
+                addItem() {
+                    this.items.push({ id: this.items.length + 1, description: '', quantity: '', unit: '', unit_price: '', total: 0 });
+                },
+                removeItem(index) {
+                    if (this.items.length > 1) this.items.splice(index, 1);
+                },
+                calculateTotal(item) {
+                    const qty = parseFloat(item.quantity) || 0;
+                    const price = parseFloat(item.unit_price) || 0;
+                    item.total = (qty * price).toFixed(2);
+                    return item.total;
+                },
+                getGrandTotal() {
+                    return this.items.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0).toFixed(2);
+                },
+                async loadRequisitionPreview() {
+                    if (!this.selectedRequisitionId) {
+                        this.requisitionPreview = null;
+                        this.items = [{ id: 1, description: '', quantity: '', unit: '', unit_price: '', total: 0 }];
+                        this.requestedDeliveryDate = '';
+                        return;
+                    }
+                    const res = await fetch(`/api/chef-requisitions/${this.selectedRequisitionId}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        // Group and compute
+                        const grouped = {};
+                        (data.items || []).forEach(it => {
+                            const vendor = it.vendor || 'Unknown Vendor';
+                            if (!grouped[vendor]) grouped[vendor] = { vendor_name: vendor, items: [], item_count: 0, total_quantity: 0, vendor_subtotal: 0 };
+                            grouped[vendor].items.push(it);
+                            grouped[vendor].item_count += 1;
+                            grouped[vendor].total_quantity += parseFloat(it.quantity || 0);
+                            grouped[vendor].vendor_subtotal += (parseFloat(it.price || 0) * parseFloat(it.quantity || 0));
+                        });
+                        this.requisitionPreview = {
+                            id: data.id,
+                            chef: data.chef?.name,
+                            requested_for_date: data.requested_for_date,
+                            groups: Object.values(grouped),
+                            subtotal: (data.items || []).reduce((s,it)=> s + (parseFloat(it.price||0)*parseFloat(it.quantity||0)), 0),
+                            total_items: (data.items || []).length,
+                            total_quantity: (data.items || []).reduce((s,it)=> s + parseFloat(it.quantity||0), 0),
+                            purchase_order: data.purchase_order ?? null,
+                        };
+                        // Auto-populate items table
+                        const mapped = (data.items || []).map((it, idx) => {
+                            const qty = parseFloat(it.quantity || 0) || 0;
+                            const price = parseFloat(it.price || 0) || 0;
+                            return { id: idx + 1, description: it.item ?? (it.item_id ?? ''), quantity: qty, unit: it.uom ?? it.unit ?? '', unit_price: price, total: (qty * price).toFixed(2) };
+                        });
+                        this.items = mapped.length ? mapped : [{ id: 1, description: '', quantity: '', unit: '', unit_price: '', total: 0 }];
+                        // Set requested delivery date from requisition
+                        this.requestedDeliveryDate = data.requested_for_date || '';
+                    }
                 }
             }
         }

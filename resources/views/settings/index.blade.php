@@ -1,32 +1,30 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Settings - Restaurant Management</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-</head>
-<body class="bg-gray-50">
-    <div class="min-h-screen py-8">
-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-            <!-- Header -->
-            <div class="mb-8 flex items-center justify-between">
-                <div>
-                    <h1 class="text-3xl font-bold text-gray-900">Settings</h1>
-                    <p class="mt-2 text-sm text-gray-600">Manage your restaurant management system preferences</p>
-                </div>
-                <a href="{{ route('dashboard') }}" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-                    <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                    </svg>
-                    Back to Dashboard
-                </a>
-            </div>
+@extends('layouts.app')
 
-            <!-- Settings Tabs -->
-            <div x-data="{ activeTab: 'general' }" class="bg-white shadow-md rounded-lg overflow-hidden">
+@section('title', 'Settings')
+
+@section('content')
+<div class="px-4 py-8 sm:px-6 lg:px-10">
+    <div class="mx-auto max-w-6xl">
+        <div class="mb-8 flex flex-wrap items-start justify-between gap-4">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">Settings</h1>
+                <p class="mt-2 text-sm text-gray-600">Manage your restaurant management system preferences</p>
+            </div>
+            <a href="{{ route('dashboard') }}" class="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                </svg>
+                Back to Dashboard
+            </a>
+        </div>
+
+        @if (session('success'))
+            <div class="mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+                {{ session('success') }}
+            </div>
+        @endif
+
+        <div x-data="{ activeTab: @js($activeTab) }" class="overflow-hidden rounded-lg bg-white shadow-md">
                 <!-- Tab Navigation -->
                 <div class="border-b border-gray-200">
                     <nav class="flex -mb-px overflow-x-auto" aria-label="Tabs">
@@ -95,21 +93,30 @@
                     <form action="{{ route('settings.update') }}" method="POST">
                         @csrf
                         @method('PUT')
+                        <input type="hidden" name="active_tab" x-model="activeTab">
 
                         <!-- General Settings -->
                         <div x-show="activeTab === 'general'" class="space-y-6">
                             <h3 class="text-lg font-medium text-gray-900">General Settings</h3>
                             
+                            @php
+                                $currentTimezone = old('timezone', $generalSettings->timezone ?? 'America/Los_Angeles');
+                                $currentCurrency = old('currency', $generalSettings->currency ?? 'USD');
+                                $currentDateFormat = old('date_format', $generalSettings->date_format ?? 'm/d/Y');
+                                $currentLanguage = old('language', $generalSettings->language ?? 'en');
+                            @endphp
+
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
                                     <label for="timezone" class="block text-sm font-medium text-gray-700 mb-2">
                                         Timezone
                                     </label>
                                     <select name="timezone" id="timezone" class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                                        <option value="America/New_York">Eastern Time (ET)</option>
-                                        <option value="America/Chicago">Central Time (CT)</option>
-                                        <option value="America/Denver">Mountain Time (MT)</option>
-                                        <option value="America/Los_Angeles" selected>Pacific Time (PT)</option>
+                                        <option value="America/New_York" @selected($currentTimezone === 'America/New_York')>Eastern Time (ET)</option>
+                                        <option value="America/Chicago" @selected($currentTimezone === 'America/Chicago')>Central Time (CT)</option>
+                                        <option value="America/Denver" @selected($currentTimezone === 'America/Denver')>Mountain Time (MT)</option>
+                                        <option value="America/Los_Angeles" @selected($currentTimezone === 'America/Los_Angeles')>Pacific Time (PT)</option>
+                                        <option value="UTC" @selected($currentTimezone === 'UTC')>UTC</option>
                                     </select>
                                 </div>
 
@@ -118,10 +125,10 @@
                                         Currency
                                     </label>
                                     <select name="currency" id="currency" class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                                        <option value="USD" selected>USD ($)</option>
-                                        <option value="EUR">EUR (€)</option>
-                                        <option value="GBP">GBP (£)</option>
-                                        <option value="CAD">CAD ($)</option>
+                                        <option value="USD" @selected($currentCurrency === 'USD')>USD ($)</option>
+                                        <option value="EUR" @selected($currentCurrency === 'EUR')>EUR (€)</option>
+                                        <option value="GBP" @selected($currentCurrency === 'GBP')>GBP (£)</option>
+                                        <option value="CAD" @selected($currentCurrency === 'CAD')>CAD ($)</option>
                                     </select>
                                 </div>
 
@@ -130,9 +137,9 @@
                                         Date Format
                                     </label>
                                     <select name="date_format" id="date_format" class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                                        <option value="m/d/Y" selected>MM/DD/YYYY</option>
-                                        <option value="d/m/Y">DD/MM/YYYY</option>
-                                        <option value="Y-m-d">YYYY-MM-DD</option>
+                                        <option value="m/d/Y" @selected($currentDateFormat === 'm/d/Y')>MM/DD/YYYY</option>
+                                        <option value="d/m/Y" @selected($currentDateFormat === 'd/m/Y')>DD/MM/YYYY</option>
+                                        <option value="Y-m-d" @selected($currentDateFormat === 'Y-m-d')>YYYY-MM-DD</option>
                                     </select>
                                 </div>
 
@@ -141,9 +148,9 @@
                                         Language
                                     </label>
                                     <select name="language" id="language" class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                                        <option value="en" selected>English</option>
-                                        <option value="es">Spanish</option>
-                                        <option value="fr">French</option>
+                                        <option value="en" @selected($currentLanguage === 'en')>English</option>
+                                        <option value="es" @selected($currentLanguage === 'es')>Spanish</option>
+                                        <option value="fr" @selected($currentLanguage === 'fr')>French</option>
                                     </select>
                                 </div>
                             </div>
@@ -158,8 +165,8 @@
                                     <label for="restaurant_name" class="block text-sm font-medium text-gray-700 mb-2">
                                         Restaurant Name
                                     </label>
-                                    <input type="text" name="restaurant_name" id="restaurant_name" 
-                                           value="My Restaurant" 
+                                    <input type="text" name="restaurant_name" id="restaurant_name"
+                                           value="{{ old('restaurant_name', $profileSettings->restaurant_name) }}"
                                            class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                                 </div>
 
@@ -167,8 +174,8 @@
                                     <label for="address" class="block text-sm font-medium text-gray-700 mb-2">
                                         Address
                                     </label>
-                                    <input type="text" name="address" id="address" 
-                                           value="123 Main Street" 
+                                    <input type="text" name="address" id="address"
+                                           value="{{ old('address', $profileSettings->address) }}"
                                            class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                                 </div>
 
@@ -176,8 +183,8 @@
                                     <label for="city" class="block text-sm font-medium text-gray-700 mb-2">
                                         City
                                     </label>
-                                    <input type="text" name="city" id="city" 
-                                           value="San Francisco" 
+                                    <input type="text" name="city" id="city"
+                                           value="{{ old('city', $profileSettings->city) }}"
                                            class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                                 </div>
 
@@ -185,8 +192,8 @@
                                     <label for="state" class="block text-sm font-medium text-gray-700 mb-2">
                                         State/Province
                                     </label>
-                                    <input type="text" name="state" id="state" 
-                                           value="CA" 
+                                    <input type="text" name="state" id="state"
+                                           value="{{ old('state', $profileSettings->state) }}"
                                            class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                                 </div>
 
@@ -194,8 +201,8 @@
                                     <label for="zip" class="block text-sm font-medium text-gray-700 mb-2">
                                         ZIP/Postal Code
                                     </label>
-                                    <input type="text" name="zip" id="zip" 
-                                           value="94102" 
+                                    <input type="text" name="zip" id="zip"
+                                           value="{{ old('zip', $profileSettings->zip) }}"
                                            class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                                 </div>
 
@@ -203,8 +210,8 @@
                                     <label for="phone" class="block text-sm font-medium text-gray-700 mb-2">
                                         Phone Number
                                     </label>
-                                    <input type="tel" name="phone" id="phone" 
-                                           value="(555) 123-4567" 
+                                    <input type="tel" name="phone" id="phone"
+                                           value="{{ old('phone', $profileSettings->phone) }}"
                                            class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                                 </div>
 
@@ -212,8 +219,8 @@
                                     <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
                                         Email Address
                                     </label>
-                                    <input type="email" name="email" id="email" 
-                                           value="info@myrestaurant.com" 
+                                    <input type="email" name="email" id="email"
+                                           value="{{ old('email', $profileSettings->email) }}"
                                            class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                                 </div>
 
@@ -221,8 +228,8 @@
                                     <label for="website" class="block text-sm font-medium text-gray-700 mb-2">
                                         Website
                                     </label>
-                                    <input type="url" name="website" id="website" 
-                                           value="https://myrestaurant.com" 
+                                    <input type="url" name="website" id="website"
+                                           value="{{ old('website', $profileSettings->website) }}"
                                            class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                                 </div>
                             </div>
@@ -235,7 +242,8 @@
                             <div class="space-y-4">
                                 <div class="flex items-start">
                                     <div class="flex items-center h-5">
-                                        <input id="notify_requisitions" name="notify_requisitions" type="checkbox" checked 
+                                        <input id="notify_requisitions" name="notify_requisitions" type="checkbox"
+                                               @checked(old('notify_requisitions', $notificationSettings->notify_requisitions))
                                                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
                                     </div>
                                     <div class="ml-3 text-sm">
@@ -246,7 +254,8 @@
 
                                 <div class="flex items-start">
                                     <div class="flex items-center h-5">
-                                        <input id="notify_expenses" name="notify_expenses" type="checkbox" checked 
+                                        <input id="notify_expenses" name="notify_expenses" type="checkbox"
+                                               @checked(old('notify_expenses', $notificationSettings->notify_expenses))
                                                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
                                     </div>
                                     <div class="ml-3 text-sm">
@@ -257,7 +266,8 @@
 
                                 <div class="flex items-start">
                                     <div class="flex items-center h-5">
-                                        <input id="notify_purchase_orders" name="notify_purchase_orders" type="checkbox" checked 
+                                        <input id="notify_purchase_orders" name="notify_purchase_orders" type="checkbox"
+                                               @checked(old('notify_purchase_orders', $notificationSettings->notify_purchase_orders))
                                                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
                                     </div>
                                     <div class="ml-3 text-sm">
@@ -268,7 +278,8 @@
 
                                 <div class="flex items-start">
                                     <div class="flex items-center h-5">
-                                        <input id="notify_payroll" name="notify_payroll" type="checkbox" 
+                                        <input id="notify_payroll" name="notify_payroll" type="checkbox"
+                                               @checked(old('notify_payroll', $notificationSettings->notify_payroll))
                                                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
                                     </div>
                                     <div class="ml-3 text-sm">
@@ -279,12 +290,37 @@
 
                                 <div class="flex items-start">
                                     <div class="flex items-center h-5">
-                                        <input id="notify_email_daily" name="notify_email_daily" type="checkbox" 
+                                        <input id="notify_email_daily" name="notify_email_daily" type="checkbox"
+                                               @checked(old('notify_email_daily', $notificationSettings->notify_email_daily))
                                                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
                                     </div>
                                     <div class="ml-3 text-sm">
                                         <label for="notify_email_daily" class="font-medium text-gray-700">Daily Summary Emails</label>
                                         <p class="text-gray-500">Receive a daily summary of all activities</p>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-start">
+                                    <div class="flex items-center h-5">
+                                        <input id="sms_enabled" name="sms_enabled" type="checkbox"
+                                               @checked(old('sms_enabled', $notificationSettings->sms_enabled))
+                                               class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                                    </div>
+                                    <div class="ml-3 text-sm">
+                                        <label for="sms_enabled" class="font-medium text-gray-700">SMS Alerts</label>
+                                        <p class="text-gray-500">Send critical notifications via Twilio SMS.</p>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-start">
+                                    <div class="flex items-center h-5">
+                                        <input id="whatsapp_enabled" name="whatsapp_enabled" type="checkbox"
+                                               @checked(old('whatsapp_enabled', $notificationSettings->whatsapp_enabled))
+                                               class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                                    </div>
+                                    <div class="ml-3 text-sm">
+                                        <label for="whatsapp_enabled" class="font-medium text-gray-700">WhatsApp Notifications</label>
+                                        <p class="text-gray-500">Deliver alerts to your Twilio WhatsApp number.</p>
                                     </div>
                                 </div>
                             </div>
@@ -293,7 +329,13 @@
                         <!-- Integrations -->
                         <div x-show="activeTab === 'integration'" class="space-y-6">
                             <h3 class="text-lg font-medium text-gray-900">Integration Settings</h3>
-                            
+
+                            @php
+                                $loyverseConnected = filled($integrationSettings->loyverse_api_key);
+                                $smtpConfigured = filled($integrationSettings->smtp_host) && filled($integrationSettings->smtp_username);
+                                $twilioConfigured = filled($integrationSettings->twilio_account_sid) && filled($integrationSettings->twilio_auth_token);
+                            @endphp
+
                             <div class="space-y-6">
                                 <!-- Loyverse Integration -->
                                 <div class="border border-gray-200 rounded-lg p-4">
@@ -309,7 +351,9 @@
                                                 <p class="text-sm text-gray-500">Sync sales data from Loyverse</p>
                                             </div>
                                         </div>
-                                        <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Connected</span>
+                                        <span class="px-2 py-1 text-xs font-medium rounded-full {{ $loyverseConnected ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
+                                            {{ $loyverseConnected ? 'Connected' : 'Not Configured' }}
+                                        </span>
                                     </div>
                                     <div class="space-y-3">
                                         <div>
@@ -317,12 +361,13 @@
                                                 API Key
                                             </label>
                                             <input type="password" name="loyverse_api_key" id="loyverse_api_key" 
-                                                   value="••••••••••••••••" 
+                                                   value="{{ old('loyverse_api_key', $integrationSettings->loyverse_api_key) }}" 
                                                    class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm">
                                         </div>
                                         <div>
                                             <label class="flex items-center">
-                                                <input type="checkbox" name="loyverse_auto_sync" checked 
+                                                <input type="checkbox" name="loyverse_auto_sync" 
+                                                       @checked(old('loyverse_auto_sync', $integrationSettings->loyverse_auto_sync))
                                                        class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
                                                 <span class="ml-2 text-sm text-gray-700">Enable automatic daily sync at 2:00 AM</span>
                                             </label>
@@ -344,7 +389,9 @@
                                                 <p class="text-sm text-gray-500">Configure SMTP settings</p>
                                             </div>
                                         </div>
-                                        <span class="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">Not Configured</span>
+                                        <span class="px-2 py-1 text-xs font-medium rounded-full {{ $smtpConfigured ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
+                                            {{ $smtpConfigured ? 'Connected' : 'Not Configured' }}
+                                        </span>
                                     </div>
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                                         <div>
@@ -352,7 +399,7 @@
                                                 SMTP Host
                                             </label>
                                             <input type="text" name="smtp_host" id="smtp_host" 
-                                                   placeholder="smtp.gmail.com" 
+                                                   value="{{ old('smtp_host', $integrationSettings->smtp_host) }}" 
                                                    class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm">
                                         </div>
                                         <div>
@@ -360,9 +407,102 @@
                                                 SMTP Port
                                             </label>
                                             <input type="text" name="smtp_port" id="smtp_port" 
-                                                   placeholder="587" 
+                                                   value="{{ old('smtp_port', $integrationSettings->smtp_port) }}" 
                                                    class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm">
                                         </div>
+                                        <div>
+                                            <label for="smtp_username" class="block text-sm font-medium text-gray-700 mb-1">
+                                                SMTP Username
+                                            </label>
+                                            <input type="text" name="smtp_username" id="smtp_username"
+                                                   value="{{ old('smtp_username', $integrationSettings->smtp_username) }}"
+                                                   class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm">
+                                        </div>
+                                        <div>
+                                            <label for="smtp_password" class="block text-sm font-medium text-gray-700 mb-1">
+                                                SMTP Password
+                                            </label>
+                                            <input type="password" name="smtp_password" id="smtp_password"
+                                                   value="{{ old('smtp_password', $integrationSettings->smtp_password) }}"
+                                                   class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm">
+                                        </div>
+                                        <div>
+                                            <label for="smtp_encryption" class="block text-sm font-medium text-gray-700 mb-1">
+                                                Encryption
+                                            </label>
+                                            <input type="text" name="smtp_encryption" id="smtp_encryption"
+                                                   value="{{ old('smtp_encryption', $integrationSettings->smtp_encryption) }}"
+                                                   placeholder="tls / ssl"
+                                                   class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Twilio Integration -->
+                                <div class="border border-gray-200 rounded-lg p-4">
+                                    <div class="flex items-center justify-between mb-4">
+                                        <div class="flex items-center">
+                                            <div class="bg-green-100 rounded-lg p-2">
+                                                <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h18M9 3v4M15 3v4m-9 4h12l-1.5 9h-9z"/>
+                                                </svg>
+                                            </div>
+                                            <div class="ml-4">
+                                                <h4 class="text-sm font-medium text-gray-900">Twilio Messaging</h4>
+                                                <p class="text-sm text-gray-500">Manage SMS and WhatsApp delivery</p>
+                                            </div>
+                                        </div>
+                                        <span class="px-2 py-1 text-xs font-medium rounded-full {{ $twilioConfigured ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
+                                            {{ $twilioConfigured ? 'Connected' : 'Not Configured' }}
+                                        </span>
+                                    </div>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        <div>
+                                            <label for="twilio_account_sid" class="block text-sm font-medium text-gray-700 mb-1">
+                                                Account SID
+                                            </label>
+                                            <input type="text" name="twilio_account_sid" id="twilio_account_sid"
+                                                   value="{{ old('twilio_account_sid', $integrationSettings->twilio_account_sid) }}"
+                                                   class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm">
+                                        </div>
+                                        <div>
+                                            <label for="twilio_auth_token" class="block text-sm font-medium text-gray-700 mb-1">
+                                                Auth Token
+                                            </label>
+                                            <input type="password" name="twilio_auth_token" id="twilio_auth_token"
+                                                   value="{{ old('twilio_auth_token', $integrationSettings->twilio_auth_token) }}"
+                                                   class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm">
+                                        </div>
+                                        <div>
+                                            <label for="twilio_sms_number" class="block text-sm font-medium text-gray-700 mb-1">
+                                                SMS Number
+                                            </label>
+                                            <input type="text" name="twilio_sms_number" id="twilio_sms_number"
+                                                   value="{{ old('twilio_sms_number', $integrationSettings->twilio_sms_number) }}"
+                                                   class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm">
+                                        </div>
+                                        <div>
+                                            <label for="twilio_whatsapp_number" class="block text-sm font-medium text-gray-700 mb-1">
+                                                WhatsApp Number
+                                            </label>
+                                            <input type="text" name="twilio_whatsapp_number" id="twilio_whatsapp_number"
+                                                   value="{{ old('twilio_whatsapp_number', $integrationSettings->twilio_whatsapp_number) }}"
+                                                   class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm">
+                                        </div>
+                                    </div>
+                                    <div class="mt-3 space-y-2">
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="twilio_sms_enabled"
+                                                   @checked(old('twilio_sms_enabled', $integrationSettings->twilio_sms_enabled))
+                                                   class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                                            <span class="ml-2 text-sm text-gray-700">Enable SMS delivery</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="twilio_whatsapp_enabled"
+                                                   @checked(old('twilio_whatsapp_enabled', $integrationSettings->twilio_whatsapp_enabled))
+                                                   class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                                            <span class="ml-2 text-sm text-gray-700">Enable WhatsApp delivery</span>
+                                        </label>
                                     </div>
                                 </div>
                             </div>
@@ -405,8 +545,9 @@
                                 <div class="space-y-4">
                                     <div class="flex items-start">
                                         <div class="flex items-center h-5">
-                                            <input id="two_factor" name="two_factor" type="checkbox" 
-                                                   class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                                                 <input id="two_factor" name="two_factor" type="checkbox" 
+                                                     @checked(old('two_factor', $securitySettings->two_factor_enabled))
+                                                     class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
                                         </div>
                                         <div class="ml-3 text-sm">
                                             <label for="two_factor" class="font-medium text-gray-700">Enable Two-Factor Authentication</label>
@@ -416,8 +557,9 @@
 
                                     <div class="flex items-start">
                                         <div class="flex items-center h-5">
-                                            <input id="session_timeout" name="session_timeout" type="checkbox" checked 
-                                                   class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                                                 <input id="session_timeout" name="session_timeout" type="checkbox"
+                                                     @checked(old('session_timeout', $securitySettings->session_timeout_enabled))
+                                                     class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
                                         </div>
                                         <div class="ml-3 text-sm">
                                             <label for="session_timeout" class="font-medium text-gray-700">Automatic Session Timeout</label>
@@ -1311,9 +1453,11 @@
             </div>
         </div>
     </div>
+</div>
+@endsection
 
-    <style>
-        [x-cloak] { display: none !important; }
-    </style>
-</body>
-</html>
+@push('styles')
+<style>
+    [x-cloak] { display: none !important; }
+</style>
+@endpush
