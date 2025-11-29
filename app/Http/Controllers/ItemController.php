@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Item;
+use App\Models\ItemCategory;
+use App\Models\Vendor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -21,7 +23,7 @@ class ItemController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
+        $validated = $request->validateWithBag('items', [
             'name' => 'required|string|max:255',
             'category' => 'required|string|max:255',
             'uom' => 'required|string|max:50',
@@ -33,11 +35,24 @@ class ItemController extends Controller
             'description' => 'nullable|string',
         ]);
 
+        $validated['vendor'] = trim($validated['vendor']);
+        $validated['category'] = trim($validated['category']);
+
+        Vendor::firstOrCreate(
+            ['name' => $validated['vendor']],
+            ['is_active' => true]
+        );
+
+        ItemCategory::firstOrCreate(
+            ['name' => $validated['category']],
+            ['status' => 'active']
+        );
+
         $item = Item::create($validated);
 
-        return redirect()->route('settings')
-                        ->with('success', 'Item created successfully!')
-                        ->with('activeTab', 'items');
+        return redirect()->route('settings', ['tab' => 'items'])
+                ->with('success', 'Item created successfully!')
+                ->with('activeTab', 'items');
     }
 
     /**
@@ -47,7 +62,7 @@ class ItemController extends Controller
     {
         $item = Item::findOrFail($id);
 
-        $validated = $request->validate([
+        $validated = $request->validateWithBag('items', [
             'name' => 'required|string|max:255',
             'category' => 'required|string|max:255',
             'uom' => 'required|string|max:50',
@@ -58,6 +73,19 @@ class ItemController extends Controller
             'reorder_level' => 'nullable|numeric|min:0',
             'description' => 'nullable|string',
         ]);
+
+        $validated['vendor'] = trim($validated['vendor']);
+        $validated['category'] = trim($validated['category']);
+
+        Vendor::firstOrCreate(
+            ['name' => $validated['vendor']],
+            ['is_active' => true]
+        );
+
+        ItemCategory::firstOrCreate(
+            ['name' => $validated['category']],
+            ['status' => 'active']
+        );
 
         // Log price change if price has changed
         if ($item->price != $validated['price']) {
@@ -70,9 +98,9 @@ class ItemController extends Controller
 
         $item->update($validated);
 
-        return redirect()->route('settings')
-                        ->with('success', 'Item updated successfully!')
-                        ->with('activeTab', 'items');
+        return redirect()->route('settings', ['tab' => 'items'])
+                ->with('success', 'Item updated successfully!')
+                ->with('activeTab', 'items');
     }
 
     /**
@@ -87,9 +115,9 @@ class ItemController extends Controller
         
         $item->delete();
 
-        return redirect()->route('settings')
-                        ->with('success', 'Item deleted successfully!')
-                        ->with('activeTab', 'items');
+        return redirect()->route('settings', ['tab' => 'items'])
+                ->with('success', 'Item deleted successfully!')
+                ->with('activeTab', 'items');
     }
 
     /**

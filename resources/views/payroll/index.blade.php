@@ -34,7 +34,7 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm font-medium text-gray-600">Total Employees</p>
-                            <p class="mt-2 text-3xl font-bold text-gray-900">{{ $totalEmployees }}</p>
+                            <p class="mt-2 text-xl font-bold text-gray-900">{{ $totalEmployees }}</p>
                         </div>
                         <div class="p-3 bg-indigo-100 rounded-full">
                             <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -49,7 +49,7 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm font-medium text-gray-600">Monthly Obligations</p>
-                            <p class="mt-2 text-3xl font-bold text-gray-900">KES {{ number_format($totalMonthlySalaryObligations, 2) }}</p>
+                            <p class="mt-2 text-xl font-bold text-gray-900">{{ currency_format($totalMonthlySalaryObligations) }}</p>
                         </div>
                         <div class="p-3 bg-blue-100 rounded-full">
                             <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -64,7 +64,7 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm font-medium text-gray-600">Outstanding Debts</p>
-                            <p class="mt-2 text-3xl font-bold text-red-600">KES {{ number_format($totalOutstandingDebts, 2) }}</p>
+                            <p class="mt-2 text-xl font-bold text-red-600">{{ currency_format($totalOutstandingDebts) }}</p>
                         </div>
                         <div class="p-3 bg-red-100 rounded-full">
                             <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -79,7 +79,7 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm font-medium text-gray-600">Active Loans</p>
-                            <p class="mt-2 text-3xl font-bold text-orange-600">KES {{ number_format($totalActiveLoans, 2) }}</p>
+                            <p class="mt-2 text-xl font-bold text-orange-600">{{ currency_format($totalActiveLoans) }}</p>
                         </div>
                         <div class="p-3 bg-orange-100 rounded-full">
                             <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -94,7 +94,7 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm font-medium text-gray-600">Expected Next Cycle</p>
-                            <p class="mt-2 text-3xl font-bold text-green-600">KES {{ number_format($totalExpectedNextCycle, 2) }}</p>
+                            <p class="mt-2 text-xl font-bold text-green-600">{{ currency_format($totalExpectedNextCycle) }}</p>
                         </div>
                         <div class="p-3 bg-green-100 rounded-full">
                             <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -248,22 +248,22 @@
                                         {{ $payroll->employee->name }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        KES {{ number_format($payroll->monthly_salary, 2) }}
+                                        {{ currency_format($payroll->monthly_salary) }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                         {{ $payroll->total_absent_days }} days
                                         @if($payroll->absent_days_deduction > 0)
-                                            <span class="text-xs text-red-600">(-KES {{ number_format($payroll->absent_days_deduction, 2) }})</span>
+                                            <span class="text-xs text-red-600">({{ currency_format(-$payroll->absent_days_deduction) }})</span>
                                         @endif
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                        KES {{ number_format($payroll->total_due, 2) }}
+                                        {{ currency_format($payroll->total_due) }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600">
-                                        KES {{ number_format($payroll->total_paid, 2) }}
+                                        {{ currency_format($payroll->total_paid) }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium {{ $payroll->outstanding_balance > 0 ? 'text-red-600' : 'text-gray-900' }}">
-                                        KES {{ number_format($payroll->outstanding_balance, 2) }}
+                                        {{ currency_format($payroll->outstanding_balance) }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         @if($payroll->status === 'pending')

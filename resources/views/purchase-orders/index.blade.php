@@ -177,7 +177,7 @@
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm font-semibold text-gray-900">TZS {{ number_format($po->grand_total, 0) }}</div>
+                                <div class="text-sm font-semibold text-gray-900">{{ currency_format($po->grand_total) }}</div>
                                 <div class="text-xs text-gray-500">{{ $po->creator->name ?? 'N/A' }}</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">

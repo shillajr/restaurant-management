@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ str_replace('_', '-', $activeLocale['code'] ?? app()->getLocale()) }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,6 +11,21 @@
 </head>
 <body class="bg-gray-50">
     @include('partials.navigation')
+    @php
+        $appLocalePayload = [
+            'code' => $activeLocale['code'] ?? app()->getLocale(),
+            'label' => $activeLocale['label'] ?? locale_label(),
+            'native' => $activeLocale['native'] ?? locale_native_label(),
+            'supported' => $supportedLocales ?? supported_locales(),
+        ];
+    @endphp
+    <script>
+        window.appLocale = @json($appLocalePayload);
+
+        @if(isset($activeCurrency))
+        window.appCurrency = @json($activeCurrency);
+        @endif
+    </script>
     @stack('scripts')
 </body>
 </html>

@@ -67,12 +67,12 @@
                         <div class="mt-4 grid grid-cols-2 gap-4 text-sm">
                             <div>
                                 <p class="text-gray-500">Monthly Salary</p>
-                                <p class="font-semibold text-gray-900">KES {{ number_format($loan->employee->monthly_salary, 2) }}</p>
+                                <p class="font-semibold text-gray-900">{{ currency_format($loan->employee->monthly_salary) }}</p>
                             </div>
                             <div>
                                 <p class="text-gray-500">Total Active Loans</p>
                                 <p class="font-semibold text-orange-600">
-                                    KES {{ number_format($loan->employee->active_loans_sum_balance ?? 0, 2) }}
+                                    {{ currency_format($loan->employee->active_loans_sum_balance ?? 0) }}
                                 </p>
                             </div>
                         </div>
@@ -87,22 +87,22 @@
                         <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
                             <div>
                                 <p class="text-sm text-gray-500">Original Amount</p>
-                                <p class="text-2xl font-bold text-gray-900">KES {{ number_format($loan->amount, 2) }}</p>
+                                <p class="text-2xl font-bold text-gray-900">{{ currency_format($loan->amount) }}</p>
                             </div>
                             <div>
                                 <p class="text-sm text-gray-500">Current Balance</p>
                                 <p class="text-2xl font-bold {{ $loan->balance > 0 ? 'text-red-600' : 'text-green-600' }}">
-                                    KES {{ number_format($loan->balance, 2) }}
+                                    {{ currency_format($loan->balance) }}
                                 </p>
                             </div>
                             <div>
                                 <p class="text-sm text-gray-500">Repayment Per Cycle</p>
-                                <p class="text-lg font-semibold text-orange-600">KES {{ number_format($loan->repayment_per_cycle, 2) }}</p>
+                                <p class="text-lg font-semibold text-orange-600">{{ currency_format($loan->repayment_per_cycle) }}</p>
                                 <p class="text-xs text-gray-500">Deducted monthly from payroll</p>
                             </div>
                             <div>
                                 <p class="text-sm text-gray-500">Total Repaid</p>
-                                <p class="text-lg font-semibold text-green-600">KES {{ number_format($loan->amount - $loan->balance, 2) }}</p>
+                                <p class="text-lg font-semibold text-green-600">{{ currency_format($loan->amount - $loan->balance) }}</p>
                                 <p class="text-xs text-gray-500">
                                     {{ $loan->amount > 0 ? number_format(($loan->amount - $loan->balance) / $loan->amount * 100, 1) : 0 }}% of original amount
                                 </p>
@@ -187,10 +187,10 @@
                                         {{ $repayment->payroll_month ?? 'N/A' }}
                                     </td>
                                     <td class="whitespace-nowrap px-6 py-4 text-sm font-semibold text-orange-600">
-                                        -KES {{ number_format($repayment->amount, 2) }}
+                                        {{ currency_format(-$repayment->amount) }}
                                     </td>
                                     <td class="whitespace-nowrap px-6 py-4 text-sm font-semibold {{ $runningBalance > 0 ? 'text-red-600' : 'text-green-600' }}">
-                                        KES {{ number_format($runningBalance, 2) }}
+                                        {{ currency_format($runningBalance) }}
                                     </td>
                                     <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                                         {{ $repayment->reference ?? 'Payroll deduction' }}
@@ -202,10 +202,10 @@
                                 <tr>
                                     <td colspan="2" class="px-6 py-4 text-sm font-semibold text-gray-900">Total Repaid</td>
                                     <td class="px-6 py-4 text-sm font-bold text-green-600">
-                                        KES {{ number_format($repayments->sum('amount'), 2) }}
+                                        {{ currency_format($repayments->sum('amount')) }}
                                     </td>
                                     <td colspan="2" class="px-6 py-4 text-sm font-bold text-gray-900">
-                                        Current Balance: KES {{ number_format($loan->balance, 2) }}
+                                        Current Balance: {{ currency_format($loan->balance) }}
                                     </td>
                                 </tr>
                             </tfoot>
@@ -272,19 +272,19 @@
                     <div class="space-y-3">
                         <div class="border-b border-orange-400 pb-3">
                             <p class="text-sm opacity-90">Original Amount</p>
-                            <p class="text-2xl font-bold">KES {{ number_format($loan->amount, 2) }}</p>
+                            <p class="text-2xl font-bold">{{ currency_format($loan->amount) }}</p>
                         </div>
                         <div class="border-b border-orange-400 pb-3">
                             <p class="text-sm opacity-90">Amount Repaid</p>
-                            <p class="text-xl font-bold">KES {{ number_format($loan->amount - $loan->balance, 2) }}</p>
+                            <p class="text-xl font-bold">{{ currency_format($loan->amount - $loan->balance) }}</p>
                         </div>
                         <div class="border-b border-orange-400 pb-3">
                             <p class="text-sm opacity-90">Outstanding Balance</p>
-                            <p class="text-xl font-bold">KES {{ number_format($loan->balance, 2) }}</p>
+                            <p class="text-xl font-bold">{{ currency_format($loan->balance) }}</p>
                         </div>
                         <div class="pt-2">
                             <p class="text-sm opacity-90">Monthly Deduction</p>
-                            <p class="text-lg font-bold">KES {{ number_format($loan->repayment_per_cycle, 2) }}</p>
+                            <p class="text-lg font-bold">{{ currency_format($loan->repayment_per_cycle) }}</p>
                         </div>
                     </div>
                 </div>

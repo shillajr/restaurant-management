@@ -14,7 +14,16 @@ class LoginController extends Controller
      */
     public function showLoginForm()
     {
-        return view('auth.login');
+        $testAccounts = [
+            'admin' => 'admin@restaurant.com',
+            'manager' => 'manager@restaurant.com',
+            'chef' => 'chef@restaurant.com',
+            'purchaser' => 'purchaser@restaurant.com',
+            'finance' => 'finance@restaurant.com',
+            'auditor' => 'auditor@restaurant.com',
+        ];
+
+        return view('auth.login', compact('testAccounts'));
     }
 
     /**

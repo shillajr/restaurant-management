@@ -89,11 +89,11 @@
                                 <div class="grid grid-cols-2 gap-4 text-sm">
                                     <div>
                                         <p class="text-blue-700">Monthly Salary</p>
-                                        <p class="text-lg font-bold text-blue-900">KES {{ number_format($employee->monthly_salary, 2) }}</p>
+                                        <p class="text-lg font-bold text-blue-900">{{ currency_format($employee->monthly_salary) }}</p>
                                     </div>
                                     <div>
                                         <p class="text-blue-700">Daily Rate</p>
-                                        <p class="text-lg font-bold text-blue-900">KES {{ number_format($employee->daily_rate, 2) }}</p>
+                                        <p class="text-lg font-bold text-blue-900">{{ currency_format($employee->daily_rate) }}</p>
                                     </div>
                                 </div>
                             </div>
@@ -106,7 +106,7 @@
                                 </label>
                                 <div class="relative">
                                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <span class="text-gray-500 sm:text-sm">KES</span>
+                                        <span class="text-gray-500 sm:text-sm">{{ currency_label() }}</span>
                                     </div>
                                     <input 
                                         type="number" 
@@ -122,7 +122,7 @@
                                         required
                                     >
                                 </div>
-                                <p class="mt-1 text-xs text-gray-500">Enter the monthly salary amount in KES</p>
+                                <p class="mt-1 text-xs text-gray-500">Enter the monthly salary amount in {{ currency_label() }}</p>
                                 @error('monthly_salary')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
@@ -139,7 +139,7 @@
                                     <div class="ml-3 flex-1">
                                         <h4 class="text-sm font-medium text-green-800">Daily Rate (Auto-calculated)</h4>
                                         <p class="mt-1 text-2xl font-bold text-green-900">
-                                            KES <span x-text="formatNumber(dailyRate)"></span>
+                                            <span x-text="formatCurrency(dailyRate)"></span>
                                         </p>
                                         <p class="mt-1 text-xs text-green-700">
                                             Calculated as: Monthly Salary ÷ 30 days
@@ -154,11 +154,11 @@
                                 <div class="space-y-2 text-sm text-yellow-800">
                                     <template x-if="monthlySalary > 0">
                                         <div>
-                                            <p class="font-medium">Based on KES <span x-text="formatNumber(monthlySalary)"></span> monthly:</p>
+                                            <p class="font-medium">Based on <span x-text="formatCurrency(monthlySalary)"></span> monthly:</p>
                                             <ul class="mt-1 ml-4 space-y-1 list-disc">
-                                                <li>1 day absent = -KES <span x-text="formatNumber(dailyRate)"></span></li>
-                                                <li>5 days absent = -KES <span x-text="formatNumber(dailyRate * 5)"></span></li>
-                                                <li>10 days absent = -KES <span x-text="formatNumber(dailyRate * 10)"></span></li>
+                                                <li>1 day absent = <span x-text="formatCurrency(-dailyRate)"></span></li>
+                                                <li>5 days absent = <span x-text="formatCurrency(-(dailyRate * 5))"></span></li>
+                                                <li>10 days absent = <span x-text="formatCurrency(-(dailyRate * 10))"></span></li>
                                             </ul>
                                         </div>
                                     </template>
@@ -213,15 +213,15 @@
                         <div class="space-y-3">
                             <div class="pb-3 border-b border-indigo-400">
                                 <p class="text-sm opacity-90">Monthly Salary</p>
-                                <p class="text-2xl font-bold">KES <span x-text="formatNumber(monthlySalary)"></span></p>
+                                <p class="text-2xl font-bold" x-text="formatCurrency(monthlySalary)"></p>
                             </div>
                             <div class="pb-3 border-b border-indigo-400">
                                 <p class="text-sm opacity-90">Daily Rate</p>
-                                <p class="text-xl font-bold">KES <span x-text="formatNumber(dailyRate)"></span></p>
+                                <p class="text-xl font-bold" x-text="formatCurrency(dailyRate)"></p>
                             </div>
                             <div class="pt-2">
                                 <p class="text-sm opacity-90">Annual Salary</p>
-                                <p class="text-xl font-bold">KES <span x-text="formatNumber(monthlySalary * 12)"></span></p>
+                                <p class="text-xl font-bold" x-text="formatCurrency(monthlySalary * 12)"></p>
                             </div>
                         </div>
                     </div>
@@ -237,13 +237,13 @@
                             <div>
                                 <p class="text-gray-500">Outstanding Balance</p>
                                 <p class="font-semibold {{ $employee->total_outstanding_balance > 0 ? 'text-red-600' : 'text-green-600' }}">
-                                    KES {{ number_format($employee->total_outstanding_balance ?? 0, 2) }}
+                                    {{ currency_format($employee->total_outstanding_balance ?? 0) }}
                                 </p>
                             </div>
                             <div>
                                 <p class="text-gray-500">Active Loans</p>
                                 <p class="font-semibold text-orange-600">
-                                    KES {{ number_format($employee->total_active_loan_balance ?? 0, 2) }}
+                                    {{ currency_format($employee->total_active_loan_balance ?? 0) }}
                                 </p>
                             </div>
                             <div>
@@ -297,6 +297,7 @@
             return {
                 monthlySalary: {{ old('monthly_salary', $employee->monthly_salary) ?: 0 }},
                 dailyRate: 0,
+                currencyMeta: window.appCurrency || { code: 'USD', symbol: '$', precision: 2 },
 
                 init() {
                     this.calculateDailyRate();
@@ -312,6 +313,22 @@
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2
                     });
+                },
+
+                get currencyLabel() {
+                    return this.currencyMeta.code;
+                },
+
+                formatCurrency(value) {
+                    const amount = parseFloat(value ?? 0) || 0;
+                    const precision = Number.isInteger(this.currencyMeta.precision) ? this.currencyMeta.precision : 2;
+                    const formatted = Math.abs(amount).toLocaleString('en-US', {
+                        minimumFractionDigits: precision,
+                        maximumFractionDigits: precision,
+                    });
+                    const sign = amount < 0 ? '-' : '';
+
+                    return `${sign}${this.currencyLabel} ${formatted}`;
                 }
             }
         }

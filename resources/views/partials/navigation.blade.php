@@ -1,42 +1,42 @@
 @php
     $navGroups = [
-        'Main' => [
+        'main' => [
             [
-                'label' => 'Dashboard',
+                'label' => __('navigation.links.dashboard'),
                 'route' => 'dashboard',
                 'active' => ['dashboard'],
                 'permission' => null,
             ],
             [
-                'label' => 'Requisitions',
+                'label' => __('navigation.links.requisitions'),
                 'route' => 'chef-requisitions.index',
                 'active' => ['chef-requisitions.*'],
                 'permission' => 'create requisitions',
             ],
             [
-                'label' => 'Purchase Orders',
+                'label' => __('navigation.links.purchase_orders'),
                 'route' => 'purchase-orders.index',
                 'active' => ['purchase-orders.*'],
                 'permission' => 'create purchase orders',
             ],
             [
-                'label' => 'Expenses',
+                'label' => __('navigation.links.expenses'),
                 'route' => 'expenses.create',
                 'active' => ['expenses.*'],
                 'permission' => 'create expenses',
             ],
         ],
-        'Insights' => [
+        'insights' => [
             [
-                'label' => 'Reports',
+                'label' => __('navigation.links.reports'),
                 'route' => 'reports.index',
                 'active' => ['reports.*'],
                 'permission' => 'view reports',
             ],
         ],
-        'System' => [
+        'system' => [
             [
-                'label' => 'Settings',
+                'label' => __('navigation.links.settings'),
                 'route' => 'settings',
                 'active' => ['settings'],
                 'permission' => null,
@@ -60,8 +60,8 @@
                     R
                 </div>
                 <div>
-                    <p class="text-base font-semibold text-gray-900">RMS</p>
-                    <p class="text-xs text-gray-500">Restaurant Mgmt</p>
+                    <p class="text-base font-semibold text-gray-900">{{ __('common.app.name_short') }}</p>
+                    <p class="text-xs text-gray-500">{{ __('common.app.tagline') }}</p>
                 </div>
             </div>
 
@@ -74,9 +74,9 @@
                     @endphp
                     <!-- Main group -->
                     <div>
-                        <p class="mb-2 text-xs font-semibold uppercase text-gray-400">Main</p>
+                        <p class="mb-2 text-xs font-semibold uppercase text-gray-400">{{ __('navigation.groups.main') }}</p>
                         <ul class="space-y-1">
-                            @foreach ($navGroups['Main'] as $item)
+                            @foreach ($navGroups['main'] as $item)
                                 @continue($item['permission'] && !auth()->user()->can($item['permission']))
                                 @php
                                     $isActive = request()->routeIs($item['active']);
@@ -94,7 +94,7 @@
                     @if(auth()->user()->hasAnyRole(['admin', 'manager']))
                     <!-- People group -->
                     <div>
-                        <p class="mb-2 text-xs font-semibold uppercase text-gray-400">People</p>
+                        <p class="mb-2 text-xs font-semibold uppercase text-gray-400">{{ __('navigation.groups.people') }}</p>
                         <div>
                             @php
                                 $baseButtonClasses = 'flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 text-left rounded-lg transition-colors duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-200 active:bg-indigo-50 active:text-indigo-600';
@@ -103,7 +103,7 @@
                             <button type="button"
                                     @click="payrollOpen = !payrollOpen"
                                     class="{{ $buttonClasses }}">
-                                <span class="flex-1 truncate">HR</span>
+                                <span class="flex-1 truncate">{{ __('navigation.hr.toggle') }}</span>
                                 <span class="ml-auto flex items-center text-gray-400 transition-transform duration-200" :class="payrollOpen ? 'rotate-180' : ''">
                                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M19 9l-7 7-7-7" />
@@ -119,21 +119,21 @@
                                     @php
                                         $subClass = $isPayroll ? $subBase . ' bg-indigo-50 text-indigo-600 font-medium' : $subBase;
                                     @endphp
-                                    <a href="{{ route('payroll.index') }}" class="{{ $subClass }}">Payroll</a>
+                                    <a href="{{ route('payroll.index') }}" class="{{ $subClass }}">{{ __('navigation.hr.payroll') }}</a>
                                 </li>
                                 <li>
                                     @php $isLoans = request()->routeIs('loans.*'); @endphp
                                     @php
                                         $subClass = $isLoans ? $subBase . ' bg-indigo-50 text-indigo-600 font-medium' : $subBase;
                                     @endphp
-                                    <a href="{{ route('loans.index') }}" class="{{ $subClass }}">Loans</a>
+                                    <a href="{{ route('loans.index') }}" class="{{ $subClass }}">{{ __('navigation.hr.loans') }}</a>
                                 </li>
                                 <li>
                                     @php $isSalary = request()->routeIs('employees.*'); @endphp
                                     @php
                                         $subClass = $isSalary ? $subBase . ' bg-indigo-50 text-indigo-600 font-medium' : $subBase;
                                     @endphp
-                                    <a href="{{ route('employees.salary.index') }}" class="{{ $subClass }}">Salary Management</a>
+                                    <a href="{{ route('employees.salary.index') }}" class="{{ $subClass }}">{{ __('navigation.hr.salary_management') }}</a>
                                 </li>
                             </ul>
                         </div>
@@ -142,9 +142,9 @@
 
                     <!-- Insights group -->
                     <div>
-                        <p class="mb-2 text-xs font-semibold uppercase text-gray-400">Insights</p>
+                        <p class="mb-2 text-xs font-semibold uppercase text-gray-400">{{ __('navigation.groups.insights') }}</p>
                         <ul class="space-y-1">
-                            @foreach ($navGroups['Insights'] as $item)
+                            @foreach ($navGroups['insights'] as $item)
                                 @continue($item['permission'] && !auth()->user()->can($item['permission']))
                                 @php
                                     $isActive = request()->routeIs($item['active']);
@@ -161,9 +161,9 @@
 
                     <!-- System group -->
                     <div>
-                        <p class="mb-2 text-xs font-semibold uppercase text-gray-400">System</p>
+                        <p class="mb-2 text-xs font-semibold uppercase text-gray-400">{{ __('navigation.groups.system') }}</p>
                         <ul class="space-y-1">
-                            @foreach ($navGroups['System'] as $item)
+                            @foreach ($navGroups['system'] as $item)
                                 @continue($item['permission'] && !auth()->user()->can($item['permission']))
                                 @php
                                     $isActive = request()->routeIs($item['active']);
@@ -194,7 +194,7 @@
                 <form action="{{ route('logout') }}" method="POST" class="mt-3">
                     @csrf
                     <button type="submit" class="text-sm font-medium text-red-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-200">
-                        Logout
+                        {{ __('navigation.user.logout') }}
                     </button>
                 </form>
             </div>
@@ -226,7 +226,7 @@
                 <div class="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
                     <span class="text-white font-bold text-sm">R</span>
                 </div>
-                <span class="text-lg font-semibold text-gray-900">RMS</span>
+                <span class="text-lg font-semibold text-gray-900">{{ __('common.app.name_short') }}</span>
             </div>
             <div class="w-6"></div>
         </header>

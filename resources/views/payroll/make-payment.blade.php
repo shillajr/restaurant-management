@@ -50,7 +50,7 @@
                             </label>
                             <div class="relative">
                                 <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                                    <span class="text-gray-500 sm:text-sm">KES</span>
+                                    <span class="text-gray-500 sm:text-sm">{{ currency_label() }}</span>
                                 </div>
                                 <input
                                     type="number"
@@ -68,10 +68,10 @@
                                 >
                             </div>
                             <div class="mt-2 flex items-center justify-between text-sm">
-                                <p class="text-gray-500">Maximum: KES {{ number_format($payroll->outstanding_balance, 2) }}</p>
+                                <p class="text-gray-500">Maximum: {{ currency_format($payroll->outstanding_balance) }}</p>
                                 <button
                                     type="button"
-                                    @click="amount = {{ $payroll->outstanding_balance }}; calculateRemaining()"
+                                    @click="amount = outstandingBalance; calculateRemaining()"
                                     class="font-medium text-indigo-600 transition-colors hover:text-indigo-800"
                                 >
                                     Pay Full Amount
@@ -180,7 +180,7 @@
                             <button
                                 type="submit"
                                 class="inline-flex items-center justify-center gap-2 rounded-lg bg-green-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
-                                :disabled="!amount || amount <= 0 || amount > {{ $payroll->outstanding_balance }}"
+                                :disabled="!amount || amount <= 0 || amount > outstandingBalance"
                             >
                                 Record Payment
                             </button>
@@ -210,21 +210,21 @@
                         <div class="border-t border-gray-200 pt-3">
                             <p class="text-sm text-gray-500">Total Due</p>
                             <p class="mt-1 text-lg font-bold text-gray-900">
-                                KES {{ number_format($payroll->total_due, 2) }}
+                                {{ currency_format($payroll->total_due) }}
                             </p>
                         </div>
 
                         <div>
                             <p class="text-sm text-gray-500">Already Paid</p>
                             <p class="mt-1 text-lg font-semibold text-green-600">
-                                KES {{ number_format($payroll->total_paid, 2) }}
+                                {{ currency_format($payroll->total_paid) }}
                             </p>
                         </div>
 
                         <div class="border-t border-gray-200 pt-3">
                             <p class="text-sm text-gray-500">Outstanding Balance</p>
                             <p class="mt-1 text-xl font-bold text-red-600">
-                                KES {{ number_format($payroll->outstanding_balance, 2) }}
+                                {{ currency_format($payroll->outstanding_balance) }}
                             </p>
                         </div>
                     </div>
@@ -235,22 +235,20 @@
                     <div class="space-y-3">
                         <div class="flex items-center justify-between border-b border-green-400 pb-3">
                             <span class="text-sm">Payment Amount</span>
-                            <span class="text-lg font-bold">KES <span x-text="formatNumber(amount || 0)"></span></span>
+                            <span class="text-lg font-bold" x-text="formatCurrency(amount || 0)"></span>
                         </div>
 
                         <div class="flex items-center justify-between border-b border-green-400 pb-3">
                             <span class="text-sm">Current Outstanding</span>
-                            <span class="text-base">KES {{ number_format($payroll->outstanding_balance, 2) }}</span>
+                            <span class="text-base">{{ currency_format($payroll->outstanding_balance) }}</span>
                         </div>
 
                         <div class="flex items-center justify-between pt-2">
                             <span class="text-sm font-medium">New Balance</span>
-                            <span class="text-2xl font-bold">
-                                KES <span x-text="formatNumber({{ $payroll->outstanding_balance }} - (amount || 0))"></span>
-                            </span>
+                            <span class="text-2xl font-bold" x-text="formatCurrency(remainingBalance())"></span>
                         </div>
 
-                        <template x-if="({{ $payroll->outstanding_balance }} - (amount || 0)) <= 0">
+                        <template x-if="remainingBalance() <= 0">
                             <div class="mt-4 flex items-center justify-center rounded-lg bg-white bg-opacity-20 p-3">
                                 <svg class="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
@@ -300,9 +298,17 @@
     function paymentForm() {
         return {
             amount: {{ old('amount', '') ?: 0 }},
+            outstandingBalance: {{ $payroll->outstanding_balance }},
+            currencyMeta: window.appCurrency || { code: 'USD', symbol: '$', precision: 2 },
 
             calculateRemaining() {
                 this.amount = parseFloat(this.amount) || 0;
+                if (this.amount > this.outstandingBalance) {
+                    this.amount = this.outstandingBalance;
+                }
+                if (this.amount < 0) {
+                    this.amount = 0;
+                }
             },
 
             formatNumber(value) {
@@ -310,6 +316,26 @@
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2
                 });
+            },
+
+            get currencyLabel() {
+                return this.currencyMeta.code;
+            },
+
+            formatCurrency(value) {
+                const amount = parseFloat(value ?? 0) || 0;
+                const precision = Number.isInteger(this.currencyMeta.precision) ? this.currencyMeta.precision : 2;
+                const formatted = Math.abs(amount).toLocaleString('en-US', {
+                    minimumFractionDigits: precision,
+                    maximumFractionDigits: precision,
+                });
+                const sign = amount < 0 ? '-' : '';
+
+                return `${sign}${this.currencyLabel} ${formatted}`;
+            },
+
+            remainingBalance() {
+                return Math.max(this.outstandingBalance - (parseFloat(this.amount) || 0), 0);
             }
         };
     }

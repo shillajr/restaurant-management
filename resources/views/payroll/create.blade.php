@@ -110,12 +110,8 @@
                                 <template x-for="employee in displayedEmployees" :key="employee.id">
                                     <tr class="hover:bg-gray-50">
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900" x-text="employee.name"></td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            <span>KES </span><span x-text="formatNumber(employee.monthly_salary)"></span>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                            <span>KES </span><span x-text="formatNumber(employee.daily_rate)"></span>
-                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900" x-text="formatCurrency(employee.monthly_salary)"></td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600" x-text="formatCurrency(employee.daily_rate)"></td>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <input 
                                                 type="number" 
@@ -128,12 +124,10 @@
                                                 placeholder="0"
                                             >
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600">
-                                            <span>-KES </span><span x-text="formatNumber(employee.absent_deduction)"></span>
-                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600" x-text="formatCurrency(-employee.absent_deduction)"></td>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <template x-if="employee.active_loans > 0">
-                                                <span class="text-sm text-orange-600" x-text="'KES ' + formatNumber(employee.active_loans)"></span>
+                                                <span class="text-sm text-orange-600" x-text="formatCurrency(employee.active_loans)"></span>
                                             </template>
                                             <template x-if="employee.active_loans == 0">
                                                 <span class="text-sm text-gray-400">None</span>
@@ -152,18 +146,14 @@
                                                 placeholder="0.00"
                                             >
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            <span class="text-green-600">KES </span><span class="text-green-600" x-text="formatNumber(employee.net_payable)"></span>
-                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600" x-text="formatCurrency(employee.net_payable)"></td>
                                     </tr>
                                 </template>
                             </tbody>
                             <tfoot class="bg-gray-50">
                                 <tr>
                                     <td colspan="7" class="px-6 py-4 text-right text-sm font-semibold text-gray-900">Total Net Payable:</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-green-600">
-                                        <span>KES </span><span x-text="formatNumber(totalNetPayable)"></span>
-                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-green-600" x-text="formatCurrency(totalNetPayable)"></td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -179,31 +169,23 @@
                         <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                             <div class="bg-blue-50 rounded-lg p-4">
                                 <p class="text-sm font-medium text-blue-600">Total Base Salary</p>
-                                <p class="mt-2 text-2xl font-bold text-blue-900">
-                                    KES <span x-text="formatNumber(totalBaseSalary)"></span>
-                                </p>
+                                <p class="mt-2 text-2xl font-bold text-blue-900" x-text="formatCurrency(totalBaseSalary)"></p>
                             </div>
 
                             <div class="bg-red-50 rounded-lg p-4">
                                 <p class="text-sm font-medium text-red-600">Total Deductions</p>
-                                <p class="mt-2 text-2xl font-bold text-red-900">
-                                    -KES <span x-text="formatNumber(totalAbsentDeductions)"></span>
-                                </p>
+                                <p class="mt-2 text-2xl font-bold text-red-900" x-text="formatCurrency(-totalAbsentDeductions)"></p>
                                 <p class="mt-1 text-xs text-red-600">Absent days only</p>
                             </div>
 
                             <div class="bg-orange-50 rounded-lg p-4">
                                 <p class="text-sm font-medium text-orange-600">Total Loan Deductions</p>
-                                <p class="mt-2 text-2xl font-bold text-orange-900">
-                                    -KES <span x-text="formatNumber(totalLoanDeductions)"></span>
-                                </p>
+                                <p class="mt-2 text-2xl font-bold text-orange-900" x-text="formatCurrency(-totalLoanDeductions)"></p>
                             </div>
 
                             <div class="bg-green-50 rounded-lg p-4">
                                 <p class="text-sm font-medium text-green-600">Total Net Payable</p>
-                                <p class="mt-2 text-2xl font-bold text-green-900">
-                                    KES <span x-text="formatNumber(totalNetPayable)"></span>
-                                </p>
+                                <p class="mt-2 text-2xl font-bold text-green-900" x-text="formatCurrency(totalNetPayable)"></p>
                             </div>
                         </div>
                     </div>
@@ -236,6 +218,7 @@
             selectedEmployee: '{{ old('employee_id', '') }}',
             allEmployees: @json($employeesData),
             displayedEmployees: [],
+            currencyMeta: window.appCurrency || { code: 'USD', symbol: '$', precision: 2 },
 
             init() {
                 this.filterEmployees();
@@ -279,6 +262,22 @@
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2
                 });
+            },
+
+            get currencyLabel() {
+                return this.currencyMeta.code;
+            },
+
+            formatCurrency(value) {
+                const amount = parseFloat(value ?? 0) || 0;
+                const precision = Number.isInteger(this.currencyMeta.precision) ? this.currencyMeta.precision : 2;
+                const formatted = Math.abs(amount).toLocaleString('en-US', {
+                    minimumFractionDigits: precision,
+                    maximumFractionDigits: precision,
+                });
+                const sign = amount < 0 ? '-' : '';
+
+                return `${sign}${this.currencyLabel} ${formatted}`;
             },
 
             fetchEmployeeData() {

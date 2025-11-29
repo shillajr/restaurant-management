@@ -1,26 +1,36 @@
 @extends('layouts.app')
 
-@section('title', 'Settings')
+@section('title', __('settings.title'))
+
+@php
+    use Illuminate\Support\Str;
+@endphp
 
 @section('content')
 <div class="px-4 py-8 sm:px-6 lg:px-10">
     <div class="mx-auto max-w-6xl">
         <div class="mb-8 flex flex-wrap items-start justify-between gap-4">
             <div>
-                <h1 class="text-3xl font-bold text-gray-900">Settings</h1>
-                <p class="mt-2 text-sm text-gray-600">Manage your restaurant management system preferences</p>
+                <h1 class="text-3xl font-bold text-gray-900">{{ __('settings.title') }}</h1>
+                <p class="mt-2 text-sm text-gray-600">{{ __('settings.description') }}</p>
             </div>
             <a href="{{ route('dashboard') }}" class="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
                 </svg>
-                Back to Dashboard
+                {{ __('settings.back_to_dashboard') }}
             </a>
         </div>
 
         @if (session('success'))
             <div class="mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
                 {{ session('success') }}
+            </div>
+        @endif
+
+        @if (session('error'))
+            <div class="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {{ session('error') }}
             </div>
         @endif
 
@@ -35,7 +45,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                             </svg>
-                            General
+                            {{ __('settings.tabs.general') }}
                         </button>
                         <button @click="activeTab = 'restaurant'" 
                                 :class="activeTab === 'restaurant' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
@@ -43,7 +53,7 @@
                             <svg class="inline-block mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
                             </svg>
-                            Restaurant Info
+                            {{ __('settings.tabs.restaurant') }}
                         </button>
                         <button @click="activeTab = 'notifications'" 
                                 :class="activeTab === 'notifications' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
@@ -51,7 +61,7 @@
                             <svg class="inline-block mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
                             </svg>
-                            Notifications
+                            {{ __('settings.tabs.notifications') }}
                         </button>
                         <button @click="activeTab = 'integration'" 
                                 :class="activeTab === 'integration' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
@@ -59,7 +69,7 @@
                             <svg class="inline-block mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"/>
                             </svg>
-                            Integrations
+                            {{ __('settings.tabs.integration') }}
                         </button>
                         <button @click="activeTab = 'security'" 
                                 :class="activeTab === 'security' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
@@ -67,7 +77,7 @@
                             <svg class="inline-block mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
                             </svg>
-                            Security
+                            {{ __('settings.tabs.security') }}
                         </button>
                         <button @click="activeTab = 'items'" 
                                 :class="activeTab === 'items' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
@@ -75,7 +85,7 @@
                             <svg class="inline-block mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
                             </svg>
-                            Items
+                            {{ __('settings.tabs.items') }}
                         </button>
                         <button @click="activeTab = 'users'" 
                                 :class="activeTab === 'users' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
@@ -83,27 +93,27 @@
                             <svg class="inline-block mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
                             </svg>
-                            Users
+                            {{ __('settings.tabs.users') }}
                         </button>
                     </nav>
                 </div>
 
                 <!-- Tab Content -->
-                <div class="p-6">
-                    <form action="{{ route('settings.update') }}" method="POST">
-                        @csrf
-                        @method('PUT')
-                        <input type="hidden" name="active_tab" x-model="activeTab">
+                <div class="p-6 space-y-6">
+                    <div x-show="['general','restaurant','notifications','integration','security'].includes(activeTab)" x-cloak>
+                        <form action="{{ route('settings.update') }}" method="POST" class="space-y-6">
+                            @csrf
+                            @method('PUT')
+                            <input type="hidden" name="active_tab" x-model="activeTab">
 
-                        <!-- General Settings -->
-                        <div x-show="activeTab === 'general'" class="space-y-6">
-                            <h3 class="text-lg font-medium text-gray-900">General Settings</h3>
+                            <!-- General Settings -->
+                            <div x-show="activeTab === 'general'" class="space-y-6">
+                            <h3 class="text-lg font-medium text-gray-900">{{ __('settings.sections.general') }}</h3>
                             
                             @php
                                 $currentTimezone = old('timezone', $generalSettings->timezone ?? 'America/Los_Angeles');
-                                $currentCurrency = old('currency', $generalSettings->currency ?? 'USD');
+                                $currentCurrency = old('currency', $generalSettings->currency ?? currency_code());
                                 $currentDateFormat = old('date_format', $generalSettings->date_format ?? 'm/d/Y');
-                                $currentLanguage = old('language', $generalSettings->language ?? 'en');
                             @endphp
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -125,10 +135,9 @@
                                         Currency
                                     </label>
                                     <select name="currency" id="currency" class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                                        <option value="USD" @selected($currentCurrency === 'USD')>USD ($)</option>
-                                        <option value="EUR" @selected($currentCurrency === 'EUR')>EUR (€)</option>
-                                        <option value="GBP" @selected($currentCurrency === 'GBP')>GBP (£)</option>
-                                        <option value="CAD" @selected($currentCurrency === 'CAD')>CAD ($)</option>
+                                        @foreach(($supportedCurrencies ?? []) as $code => $data)
+                                            <option value="{{ $code }}" @selected($currentCurrency === $code)>{{ currency_label($code) }}</option>
+                                        @endforeach
                                     </select>
                                 </div>
 
@@ -145,20 +154,28 @@
 
                                 <div>
                                     <label for="language" class="block text-sm font-medium text-gray-700 mb-2">
-                                        Language
+                                        {{ __('settings.fields.language') }}
                                     </label>
+                                    @php
+                                        $availableLocales = $supportedLocales ?? supported_locales();
+                                        $defaultLocale = $activeLocale['code'] ?? app()->getLocale();
+                                        $selectedLanguage = old('language', $generalSettings->language ?? $defaultLocale);
+                                        $currentLanguage = array_key_exists($selectedLanguage, $availableLocales) ? $selectedLanguage : $defaultLocale;
+                                    @endphp
                                     <select name="language" id="language" class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                                        <option value="en" @selected($currentLanguage === 'en')>English</option>
-                                        <option value="es" @selected($currentLanguage === 'es')>Spanish</option>
-                                        <option value="fr" @selected($currentLanguage === 'fr')>French</option>
+                                        @foreach($availableLocales as $localeCode => $localeMeta)
+                                            <option value="{{ $localeCode }}" @selected($currentLanguage === $localeCode)>
+                                                {{ $localeMeta['label'] ?? Str::upper($localeCode) }}
+                                            </option>
+                                        @endforeach
                                     </select>
                                 </div>
                             </div>
-                        </div>
+                            </div>
 
-                        <!-- Restaurant Info -->
-                        <div x-show="activeTab === 'restaurant'" class="space-y-6">
-                            <h3 class="text-lg font-medium text-gray-900">Restaurant Information</h3>
+                            <!-- Restaurant Info -->
+                            <div x-show="activeTab === 'restaurant'" class="space-y-6">
+                            <h3 class="text-lg font-medium text-gray-900">{{ __('settings.sections.restaurant') }}</h3>
                             
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div class="md:col-span-2">
@@ -233,11 +250,11 @@
                                            class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                                 </div>
                             </div>
-                        </div>
+                            </div>
 
-                        <!-- Notifications -->
-                        <div x-show="activeTab === 'notifications'" class="space-y-6">
-                            <h3 class="text-lg font-medium text-gray-900">Notification Preferences</h3>
+                            <!-- Notifications -->
+                            <div x-show="activeTab === 'notifications'" class="space-y-6">
+                            <h3 class="text-lg font-medium text-gray-900">{{ __('settings.sections.notifications') }}</h3>
                             
                             <div class="space-y-4">
                                 <div class="flex items-start">
@@ -324,11 +341,11 @@
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                            </div>
 
-                        <!-- Integrations -->
-                        <div x-show="activeTab === 'integration'" class="space-y-6">
-                            <h3 class="text-lg font-medium text-gray-900">Integration Settings</h3>
+                            <!-- Integrations -->
+                            <div x-show="activeTab === 'integration'" class="space-y-6">
+                            <h3 class="text-lg font-medium text-gray-900">{{ __('settings.sections.integration') }}</h3>
 
                             @php
                                 $loyverseConnected = filled($integrationSettings->loyverse_api_key);
@@ -357,9 +374,7 @@
                                     </div>
                                     <div class="space-y-3">
                                         <div>
-                                            <label for="loyverse_api_key" class="block text-sm font-medium text-gray-700 mb-1">
-                                                API Key
-                                            </label>
+                                            <label for="loyverse_api_key" class="block text-sm font-medium text-gray-700 mb-1">API Key</label>
                                             <input type="password" name="loyverse_api_key" id="loyverse_api_key" 
                                                    value="{{ old('loyverse_api_key', $integrationSettings->loyverse_api_key) }}" 
                                                    class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm">
@@ -510,7 +525,7 @@
 
                         <!-- Security -->
                         <div x-show="activeTab === 'security'" class="space-y-6">
-                            <h3 class="text-lg font-medium text-gray-900">Security Settings</h3>
+                            <h3 class="text-lg font-medium text-gray-900">{{ __('settings.sections.security') }}</h3>
                             
                             <div class="space-y-6">
                                 <!-- Change Password -->
@@ -597,842 +612,586 @@
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                            </div>
 
-                        <!-- Items Management -->
-                        <div x-show="activeTab === 'items'" 
-                             x-data="{
-                                showAddModal: false,
-                                showCategoryModal: false,
-                                showVendorModal: false,
-                                editingItem: null,
-                                newCategory: '',
-                                newVendor: '',
-                                searchQuery: '',
-                                filterCategory: '',
-                                filterStatus: '',
-                                categories: [
-                                    'Vegetables', 'Fruits', 'Meat', 'Seafood', 'Dairy', 'Grains',
-                                    'Cooking Oils', 'Spices', 'Beverages', 'Cleaning Supplies', 'Office Supplies'
-                                ],
-                                vendors: [
-                                    'Fresh Farm Suppliers', 'Quality Meats Ltd', 'Premium Foods Co',
-                                    'Grain Wholesalers', 'Office Essentials', 'Cleaning Pro Supply',
-                                    'Ocean Fresh Suppliers', 'Dairy Delights Co', 'Spice Market Ltd',
-                                    'Coffee Masters', 'Tea Traders'
-                                ],
-                                items: [
-                                    { id: 1, name: 'Tomatoes', category: 'Vegetables', uom: 'kg', vendor: 'Fresh Farm Suppliers', price: 3500, status: 'active', stock: 45, reorder_level: 20 },
-                                    { id: 2, name: 'Chicken Breast', category: 'Meat', uom: 'kg', vendor: 'Quality Meats Ltd', price: 12000, status: 'active', stock: 30, reorder_level: 15 },
-                                    { id: 3, name: 'Olive Oil', category: 'Cooking Oils', uom: 'L', vendor: 'Premium Foods Co', price: 8500, status: 'active', stock: 12, reorder_level: 10 },
-                                    { id: 4, name: 'Rice (Basmati)', category: 'Grains', uom: 'kg', vendor: 'Grain Wholesalers', price: 4200, status: 'active', stock: 100, reorder_level: 50 },
-                                    { id: 5, name: 'Paper Towels', category: 'Cleaning Supplies', uom: 'box', vendor: 'Office Essentials', price: 15000, status: 'active', stock: 8, reorder_level: 5 },
-                                    { id: 6, name: 'Dish Soap', category: 'Cleaning Supplies', uom: 'L', vendor: 'Cleaning Pro Supply', price: 6000, status: 'inactive', stock: 0, reorder_level: 5 }
-                                ],
-                                get filteredItems() {
-                                    return this.items.filter(item => {
-                                        const matchesSearch = item.name.toLowerCase().includes(this.searchQuery.toLowerCase()) || 
-                                                            item.vendor.toLowerCase().includes(this.searchQuery.toLowerCase());
-                                        const matchesCategory = !this.filterCategory || item.category === this.filterCategory;
-                                        const matchesStatus = !this.filterStatus || item.status === this.filterStatus;
-                                        return matchesSearch && matchesCategory && matchesStatus;
-                                    });
-                                },
-                                addItem() {
-                                    this.editingItem = null;
-                                    this.showAddModal = true;
-                                },
-                                editItem(item) {
-                                    this.editingItem = {...item};
-                                    this.showAddModal = true;
-                                },
-                                deleteItem(id) {
-                                    if (confirm('Are you sure you want to delete this item?')) {
-                                        this.items = this.items.filter(item => item.id !== id);
-                                    }
-                                },
-                                toggleStatus(item) {
-                                    item.status = item.status === 'active' ? 'inactive' : 'active';
-                                },
-                                addCategory() {
-                                    if (this.newCategory.trim() && !this.categories.includes(this.newCategory.trim())) {
-                                        this.categories.push(this.newCategory.trim());
-                                        this.newCategory = '';
-                                        this.showCategoryModal = false;
-                                    }
-                                },
-                                deleteCategory(category) {
-                                    const hasItems = this.items.some(item => item.category === category);
-                                    if (hasItems) {
-                                        alert('Cannot delete category that has items assigned to it.');
-                                        return;
-                                    }
-                                    if (confirm('Are you sure you want to delete this category?')) {
-                                        this.categories = this.categories.filter(cat => cat !== category);
-                                    }
-                                },
-                                addVendor() {
-                                    if (this.newVendor.trim() && !this.vendors.includes(this.newVendor.trim())) {
-                                        this.vendors.push(this.newVendor.trim());
-                                        this.vendors.sort();
-                                        this.newVendor = '';
-                                        this.showVendorModal = false;
-                                    }
-                                },
-                                deleteVendor(vendor) {
-                                    const hasItems = this.items.some(item => item.vendor === vendor);
-                                    if (hasItems) {
-                                        alert('Cannot delete vendor that has items assigned to it.');
-                                        return;
-                                    }
-                                    if (confirm('Are you sure you want to delete this vendor?')) {
-                                        this.vendors = this.vendors.filter(v => v !== vendor);
-                                    }
-                                }
-                             }">
-                            <div class="space-y-6">
-                                <div class="flex items-center justify-between">
-                                    <div>
-                                        <h3 class="text-lg font-medium text-gray-900">Items</h3>
-                                        <p class="mt-1 text-sm text-gray-600">Manage your item master for purchase requisitions</p>
+                            <div class="pt-6 border-t border-gray-200">
+                                <div class="flex items-center justify-end space-x-4">
+                                    <a href="{{ route('dashboard') }}" class="px-6 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                        Cancel
+                                    </a>
+                                    <button type="submit" class="px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                        <span class="flex items-center">
+                                            <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                            Save Changes
+                                        </span>
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Items Management -->
+                    @php
+                        $isEditingItem = filled($editingItem);
+                        $itemFormAction = $isEditingItem
+                            ? route('items.update', $editingItem)
+                            : route('items.store');
+                        $vendorNames = $vendors->where('is_active', true)->pluck('name')->filter()->unique()->sort()->values();
+                        $activeCategories = $itemCategories->where('status', 'active')->values();
+
+                        $itemModalShouldOpen = $isEditingItem || $errors->items->any();
+                        $categoryModalShouldOpen = $errors->categories->any();
+                        $vendorModalShouldOpen = $errors->vendors->any();
+                    @endphp
+                    <div
+                        x-show="activeTab === 'items'"
+                        x-cloak
+                        class="space-y-6"
+                        x-data="{
+                            showItemModal: @js($itemModalShouldOpen),
+                            showCategoryModal: @js($categoryModalShouldOpen),
+                            showVendorModal: @js($vendorModalShouldOpen),
+                            open(which) { this[which] = true },
+                            close(which) { this[which] = false }
+                        }"
+                    >
+                            <div class="flex flex-wrap items-center justify-between gap-3">
+                                <div>
+                                    <h3 class="text-lg font-medium text-gray-900">Items</h3>
+                                    <p class="mt-1 text-sm text-gray-600">Maintain the item catalog that powers requisitions, POs, and stock alerts.</p>
+                                </div>
+                                @if($isEditingItem)
+                                    <a href="{{ route('settings', ['tab' => 'items']) }}" class="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50">
+                                        Exit Edit Mode
+                                    </a>
+                                @endif
+                            </div>
+
+                            @if ($errors->items->any())
+                                <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                                    <ul class="list-disc space-y-1 pl-5">
+                                        @foreach ($errors->items->all() as $error)
+                                            <li>{{ $error }}</li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            @endif
+
+                            <div class="rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                                <div class="flex flex-wrap items-center justify-between gap-4 border-b border-gray-200 bg-gray-50 px-6 py-4">
+                                    <div class="space-y-1">
+                                        <div class="flex flex-wrap items-center gap-2 text-sm text-gray-600">
+                                            <span>{{ $items->count() }} items</span>
+                                            <span aria-hidden="true">•</span>
+                                            <span>{{ $vendorNames->count() }} vendors</span>
+                                            @if($itemCategories->count() > 0)
+                                                <span aria-hidden="true">•</span>
+                                                <span>{{ $activeCategories->count() }} active categories</span>
+                                            @endif
+                                            @if($items->where('status', 'inactive')->count() > 0)
+                                                <span aria-hidden="true">•</span>
+                                                <span>{{ $items->where('status', 'inactive')->count() }} inactive</span>
+                                            @endif
+                                        </div>
+                                        <a href="{{ route('items.index') }}" class="inline-flex text-sm font-medium text-blue-600 hover:text-blue-700">Open full items view →</a>
                                     </div>
-                                    <div class="flex gap-2">
-                                        <button @click="showVendorModal = true" type="button" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-                                            <svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                                            </svg>
-                                            Add New Vendor
-                                        </button>
-                                        <button @click="showCategoryModal = true" type="button" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-                                            <svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                                            </svg>
-                                            Add New Category
-                                        </button>
-                                        <button @click="addItem()" type="button" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
-                                            <svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <button type="button" @click.prevent="open('showItemModal')" class="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700">
+                                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
                                             </svg>
                                             Add New Item
                                         </button>
+                                        <button type="button" @click.prevent="open('showCategoryModal')" class="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50">
+                                            <svg class="h-4 w-4 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
+                                                <path d="M4 3a2 2 0 00-2 2v1a2 2 0 002 2h1v6a2 2 0 002 2h6v1a2 2 0 002 2h1a2 2 0 002-2v-1a2 2 0 00-2-2h-1V8a2 2 0 00-2-2H8V5a2 2 0 00-2-2H4z" />
+                                            </svg>
+                                            Add New Category
+                                        </button>
+                                        <button type="button" @click.prevent="open('showVendorModal')" class="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50">
+                                            <svg class="h-4 w-4 text-gray-500" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v1a1 1 0 001 1h14a1 1 0 001-1v-1c0-2.66-5.33-4-8-4z" />
+                                            </svg>
+                                            Add New Vendor
+                                        </button>
                                     </div>
                                 </div>
 
-                                <!-- Search and Filters -->
-                                <div class="bg-gray-50 p-4 rounded-lg">
-                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        <div>
-                                            <label class="block text-sm font-medium text-gray-700 mb-2">Search Items</label>
-                                            <input type="text" x-model="searchQuery" placeholder="Search by name or vendor..." class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                                        </div>
-                                        <div>
-                                            <label class="block text-sm font-medium text-gray-700 mb-2">Filter by Category</label>
-                                            <select x-model="filterCategory" class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                                                <option value="">All Categories</option>
-                                                <template x-for="category in categories" :key="category">
-                                                    <option :value="category" x-text="category"></option>
-                                                </template>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label class="block text-sm font-medium text-gray-700 mb-2">Filter by Status</label>
-                                            <select x-model="filterStatus" class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                                                <option value="">All Status</option>
-                                                <option value="active">Active</option>
-                                                <option value="inactive">Inactive</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Items Table -->
                                 <div class="overflow-x-auto">
-                                    <table class="min-w-full divide-y divide-gray-200">
-                                        <thead class="bg-gray-50">
+                                    <table class="min-w-full divide-y divide-gray-200 text-sm">
+                                        <thead class="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
                                             <tr>
-                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item Name</th>
-                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">UoM</th>
-                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor</th>
-                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price (TZS)</th>
-                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
-                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                                <th class="px-6 py-3 text-left">Item</th>
+                                                <th class="px-6 py-3 text-left">Vendor</th>
+                                                <th class="px-6 py-3 text-left">Price</th>
+                                                <th class="px-6 py-3 text-left">Stock</th>
+                                                <th class="px-6 py-3 text-left">Status</th>
+                                                <th class="px-6 py-3 text-right">Actions</th>
                                             </tr>
                                         </thead>
-                                        <tbody class="bg-white divide-y divide-gray-200">
-                                            <template x-for="item in filteredItems" :key="item.id">
-                                                <tr>
-                                                    <td class="px-6 py-4 whitespace-nowrap">
-                                                        <div class="text-sm font-medium text-gray-900" x-text="item.name"></div>
+                                        <tbody class="divide-y divide-gray-100 bg-white">
+                                            @forelse ($items as $item)
+                                                @php
+                                                    $isLowStock = !is_null($item->reorder_level) && !is_null($item->stock) && $item->stock <= $item->reorder_level;
+                                                    $isInactive = $item->status !== 'active';
+                                                @endphp
+                                                <tr class="{{ $isEditingItem && $editingItem->id === $item->id ? 'bg-blue-50/50' : '' }}">
+                                                    <td class="px-6 py-4 align-top">
+                                                        <div class="font-medium text-gray-900">{{ $item->name }}</div>
+                                                        <div class="mt-1 text-xs uppercase tracking-wide text-gray-500">{{ $item->category ?? 'Uncategorized' }} &middot; {{ $item->uom }}</div>
                                                     </td>
-                                                    <td class="px-6 py-4 whitespace-nowrap">
-                                                        <div class="text-sm text-gray-600" x-text="item.category"></div>
+                                                    <td class="px-6 py-4 align-top text-gray-600">{{ $item->vendor }}</td>
+                                                    <td class="px-6 py-4 align-top font-semibold text-gray-900">{{ currency_format($item->price) }}</td>
+                                                    <td class="px-6 py-4 align-top text-gray-700">
+                                                        @if(!is_null($item->stock))
+                                                            <span class="{{ $isLowStock ? 'text-red-600 font-semibold' : '' }}">{{ rtrim(rtrim(number_format((float) $item->stock, 2), '0'), '.') }}</span>
+                                                            @if($isLowStock)
+                                                                <span class="ml-2 inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-700">Low</span>
+                                                            @endif
+                                                        @else
+                                                            <span class="text-gray-400">—</span>
+                                                        @endif
                                                     </td>
-                                                    <td class="px-6 py-4 whitespace-nowrap">
-                                                        <div class="text-sm text-gray-600" x-text="item.uom"></div>
+                                                    <td class="px-6 py-4 align-top">
+                                                        <span class="inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold {{ $isInactive ? 'bg-gray-200 text-gray-700' : 'bg-green-100 text-green-700' }}">
+                                                            {{ Str::ucfirst($item->status) }}
+                                                        </span>
                                                     </td>
-                                                    <td class="px-6 py-4 whitespace-nowrap">
-                                                        <div class="text-sm text-gray-600" x-text="item.vendor"></div>
-                                                    </td>
-                                                    <td class="px-6 py-4 whitespace-nowrap">
-                                                        <div class="text-sm text-gray-900" x-text="item.price.toLocaleString()"></div>
-                                                    </td>
-                                                    <td class="px-6 py-4 whitespace-nowrap">
-                                                        <div class="text-sm" :class="item.stock <= item.reorder_level ? 'text-red-600 font-semibold' : 'text-gray-600'" x-text="item.stock"></div>
-                                                        <div x-show="item.stock <= item.reorder_level" class="text-xs text-red-500">Low stock!</div>
-                                                    </td>
-                                                    <td class="px-6 py-4 whitespace-nowrap">
-                                                        <button @click="toggleStatus(item)" type="button">
-                                                            <span x-show="item.status === 'active'" class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Active</span>
-                                                            <span x-show="item.status === 'inactive'" class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Inactive</span>
-                                                        </button>
-                                                    </td>
-                                                    <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                                        <button @click="editItem(item)" type="button" class="text-blue-600 hover:text-blue-900 mr-3">Edit</button>
-                                                        <button @click="deleteItem(item.id)" type="button" class="text-red-600 hover:text-red-900">Delete</button>
+                                                    <td class="px-6 py-4 align-top">
+                                                        <div class="flex items-center justify-end gap-3 text-sm">
+                                                            <a href="{{ route('settings', ['tab' => 'items', 'edit_item' => $item->id]) }}" class="font-medium text-blue-600 hover:text-blue-700">Edit</a>
+                                                            <form action="{{ route('items.destroy', $item) }}" method="POST" onsubmit="return confirm('Delete {{ $item->name }}? This cannot be undone.');">
+                                                                @csrf
+                                                                @method('DELETE')
+                                                                <button type="submit" class="font-medium text-red-600 hover:text-red-700">Delete</button>
+                                                            </form>
+                                                        </div>
                                                     </td>
                                                 </tr>
-                                            </template>
-                                            <tr x-show="filteredItems.length === 0">
-                                                <td colspan="8" class="px-6 py-4 text-center text-sm text-gray-500">
-                                                    No items found matching your criteria.
-                                                </td>
-                                            </tr>
+                                            @empty
+                                                <tr>
+                                                    <td colspan="6" class="px-6 py-8 text-center text-sm text-gray-500">No items yet. Add your first item to get started.</td>
+                                                </tr>
+                                            @endforelse
                                         </tbody>
                                     </table>
                                 </div>
+                            </div>
 
-                                <!-- Add/Edit Item Modal -->
-                                <div x-show="showAddModal" 
-                                     class="fixed inset-0 z-50 overflow-y-auto" 
-                                     x-cloak
-                                     style="display: none;">
-                                    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-                                        <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" @click="showAddModal = false"></div>
-                                        
-                                        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
-                                            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                                                <div class="flex items-start justify-between mb-4">
-                                                    <h3 class="text-lg font-medium text-gray-900" x-text="editingItem ? 'Edit Item' : 'Add New Item'"></h3>
-                                                    <button @click="showAddModal = false" class="text-gray-400 hover:text-gray-500">
-                                                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                                        </svg>
-                                                    </button>
-                                                </div>
-
-                                                <form action="{{ route('items.store') }}" method="POST" class="space-y-4">
-                                                    @csrf
-                                                    <input type="hidden" x-model="editingItem?.id" name="id">
-
-                                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                        <!-- Item Name -->
-                                                        <div>
-                                                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                                                Item Name <span class="text-red-500">*</span>
-                                                            </label>
-                                                            <input type="text" name="name" x-model="editingItem?.name" required 
-                                                                   class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                                                        </div>
-
-                                                        <!-- Category -->
-                                                        <div>
-                                                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                                                Category <span class="text-red-500">*</span>
-                                                            </label>
-                                                            <select name="category" x-model="editingItem?.category" required 
-                                                                    class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                                                                <option value="">Select category</option>
-                                                                <template x-for="category in categories" :key="category">
-                                                                    <option :value="category" x-text="category"></option>
-                                                                </template>
-                                                            </select>
-                                                        </div>
-
-                                                        <!-- Unit of Measure -->
-                                                        <div>
-                                                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                                                Unit of Measure <span class="text-red-500">*</span>
-                                                            </label>
-                                                            <select name="uom" x-model="editingItem?.uom" required 
-                                                                    class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                                                                <option value="">Select UoM</option>
-                                                                <option value="kg">Kilograms (kg)</option>
-                                                                <option value="g">Grams (g)</option>
-                                                                <option value="lbs">Pounds (lbs)</option>
-                                                                <option value="oz">Ounces (oz)</option>
-                                                                <option value="L">Liters (L)</option>
-                                                                <option value="ml">Milliliters (ml)</option>
-                                                                <option value="pc">Pieces (pc)</option>
-                                                                <option value="dozen">Dozen</option>
-                                                                <option value="box">Boxes</option>
-                                                                <option value="pack">Packs</option>
-                                                            </select>
-                                                        </div>
-
-                                                        <!-- Vendor -->
-                                                        <div>
-                                                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                                                Vendor/Supplier <span class="text-red-500">*</span>
-                                                            </label>
-                                                            <select name="vendor" x-model="editingItem?.vendor" required 
-                                                                    class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                                                                <option value="">Select vendor</option>
-                                                                <template x-for="vendor in vendors" :key="vendor">
-                                                                    <option :value="vendor" x-text="vendor"></option>
-                                                                </template>
-                                                            </select>
-                                                        </div>
-
-                                                        <!-- Price -->
-                                                        <div>
-                                                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                                                Price (TZS) <span class="text-red-500">*</span>
-                                                            </label>
-                                                            <input type="number" name="price" x-model="editingItem?.price" required min="0" step="0.01"
-                                                                   class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                                                        </div>
-
-                                                        <!-- Status -->
-                                                        <div>
-                                                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                                                Status <span class="text-red-500">*</span>
-                                                            </label>
-                                                            <select name="status" x-model="editingItem?.status" required 
-                                                                    class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                                                                <option value="active">Active</option>
-                                                                <option value="inactive">Inactive</option>
-                                                            </select>
-                                                        </div>
-
-                                                        <!-- Current Stock -->
-                                                        <div>
-                                                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                                                Current Stock
-                                                            </label>
-                                                            <input type="number" name="stock" x-model="editingItem?.stock" min="0" step="0.01"
-                                                                   class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                                                        </div>
-
-                                                        <!-- Reorder Level -->
-                                                        <div>
-                                                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                                                Reorder Level
-                                                                <span class="text-gray-500 text-xs">(Low stock alert threshold)</span>
-                                                            </label>
-                                                            <input type="number" name="reorder_level" x-model="editingItem?.reorder_level" min="0" step="0.01"
-                                                                   class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                                                        </div>
-                                                    </div>
-
-                                                    <!-- Additional Info -->
-                                                    <div class="bg-blue-50 p-4 rounded-lg">
-                                                        <h4 class="text-sm font-medium text-blue-900 mb-2">Item Master Requirements</h4>
-                                                        <ul class="text-xs text-blue-800 space-y-1">
-                                                            <li>✓ All fields marked with <span class="text-red-500">*</span> are required</li>
-                                                            <li>✓ Only active items will appear in requisition dropdowns</li>
-                                                            <li>✓ Price should reflect current vendor pricing</li>
-                                                            <li>✓ Set reorder level to trigger low stock alerts</li>
-                                                        </ul>
-                                                    </div>
-
-                                                    <div class="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
-                                                        <button type="submit" 
-                                                                class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
-                                                            <span x-text="editingItem ? 'Update Item' : 'Add Item'"></span>
-                                                        </button>
-                                                        <button @click="showAddModal = false" 
-                                                                type="button" 
-                                                                class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:w-auto sm:text-sm">
-                                                            Cancel
-                                                        </button>
-                                                    </div>
-                                                </form>
-                                            </div>
+                            <!-- Item Modal -->
+                            <div
+                                x-cloak
+                                x-show="showItemModal"
+                                x-transition:enter="transition ease-out duration-200"
+                                x-transition:enter-start="opacity-0"
+                                x-transition:enter-end="opacity-100"
+                                x-transition:leave="transition ease-in duration-150"
+                                x-transition:leave-start="opacity-100"
+                                x-transition:leave-end="opacity-0"
+                                @keydown.escape.window="close('showItemModal')"
+                                class="fixed inset-0 z-40 flex items-center justify-center bg-gray-900/60 px-4 py-6"
+                                @click.self="close('showItemModal')"
+                            >
+                                <div class="w-full max-w-3xl overflow-hidden rounded-lg bg-white shadow-2xl">
+                                    <div class="flex items-start justify-between border-b border-gray-200 px-6 py-4">
+                                        <div>
+                                            <h3 class="text-lg font-semibold text-gray-900">{{ $isEditingItem ? 'Edit Item' : 'Add New Item' }}</h3>
+                                            <p class="mt-1 text-sm text-gray-500">Fields with <span class="text-red-500">*</span> are required.</p>
                                         </div>
+                                        <button type="button" class="text-gray-400 hover:text-gray-600" @click="close('showItemModal')">
+                                            <span class="sr-only">Close</span>
+                                            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    <div class="max-h-[80vh] overflow-y-auto px-6 py-6">
+                                        @if ($errors->items->any())
+                                            <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                                                <ul class="list-disc space-y-1 pl-5">
+                                                    @foreach ($errors->items->all() as $error)
+                                                        <li>{{ $error }}</li>
+                                                    @endforeach
+                                                </ul>
+                                            </div>
+                                        @endif
+
+                                        <form action="{{ $itemFormAction }}" method="POST" class="space-y-4">
+                                            @csrf
+                                            @if ($isEditingItem)
+                                                @method('PUT')
+                                            @endif
+
+                                            <div class="grid gap-4 sm:grid-cols-2">
+                                                <div class="sm:col-span-2">
+                                                    <label for="item-name" class="block text-sm font-medium text-gray-700">Item name <span class="text-red-500">*</span></label>
+                                                    <input id="item-name" name="name" type="text" value="{{ old('name', $editingItem->name ?? '') }}" required class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                                </div>
+                                                <div>
+                                                    <label for="item-category" class="block text-sm font-medium text-gray-700">Category <span class="text-red-500">*</span></label>
+                                                    <input id="item-category" name="category" list="item-categories" value="{{ old('category', $editingItem->category ?? '') }}" required class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                                    <datalist id="item-categories">
+                                                        @foreach ($itemCategories->where('status', 'active') as $category)
+                                                            <option value="{{ $category->name }}"></option>
+                                                        @endforeach
+                                                    </datalist>
+                                                </div>
+                                                <div>
+                                                    <label for="item-uom" class="block text-sm font-medium text-gray-700">Unit of measure <span class="text-red-500">*</span></label>
+                                                    @php
+                                                        $selectedUom = old('uom', $editingItem->uom ?? '');
+                                                        $normalizedUnits = collect($unitOptions)->map(fn ($u) => Str::lower($u));
+                                                    @endphp
+                                                    <select id="item-uom" name="uom" required class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                                        <option value="" disabled @selected($selectedUom === '')>Select unit</option>
+                                                        @foreach ($unitOptions as $unit)
+                                                            <option value="{{ $unit }}" @selected(Str::lower($selectedUom) === Str::lower($unit))>{{ Str::upper($unit) }}</option>
+                                                        @endforeach
+                                                        @if ($selectedUom !== '' && !$normalizedUnits->contains(Str::lower($selectedUom)))
+                                                            <option value="{{ $selectedUom }}" selected>{{ Str::upper($selectedUom) }}</option>
+                                                        @endif
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label for="item-vendor" class="block text-sm font-medium text-gray-700">Vendor/Supplier <span class="text-red-500">*</span></label>
+                                                    <input id="item-vendor" name="vendor" list="item-vendors" value="{{ old('vendor', $editingItem->vendor ?? '') }}" required class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                                    <datalist id="item-vendors">
+                                                        @foreach ($vendorNames as $vendorName)
+                                                            <option value="{{ $vendorName }}"></option>
+                                                        @endforeach
+                                                    </datalist>
+                                                </div>
+                                                <div>
+                                                    <label for="item-price" class="block text-sm font-medium text-gray-700">Price ({{ currency_label() }}) <span class="text-red-500">*</span></label>
+                                                    <input id="item-price" name="price" type="number" min="0" step="0.01" value="{{ old('price', $editingItem->price ?? '') }}" required class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                                </div>
+                                                <div>
+                                                    <label for="item-status" class="block text-sm font-medium text-gray-700">Status <span class="text-red-500">*</span></label>
+                                                    <select id="item-status" name="status" required class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                                        <option value="active" @selected(old('status', $editingItem->status ?? 'active') === 'active')>Active</option>
+                                                        <option value="inactive" @selected(old('status', $editingItem->status ?? 'active') === 'inactive')>Inactive</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label for="item-stock" class="block text-sm font-medium text-gray-700">Current stock</label>
+                                                    <input id="item-stock" name="stock" type="number" min="0" step="0.01" value="{{ old('stock', $editingItem->stock ?? '') }}" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                                </div>
+                                                <div>
+                                                    <label for="item-reorder" class="block text-sm font-medium text-gray-700">Reorder level</label>
+                                                    <input id="item-reorder" name="reorder_level" type="number" min="0" step="0.01" value="{{ old('reorder_level', $editingItem->reorder_level ?? '') }}" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                                </div>
+                                                <div class="sm:col-span-2">
+                                                    <label for="item-description" class="block text-sm font-medium text-gray-700">Description</label>
+                                                    <textarea id="item-description" name="description" rows="3" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">{{ old('description', $editingItem->description ?? '') }}</textarea>
+                                                </div>
+                                            </div>
+
+                                            <div class="rounded-md bg-blue-50 px-3 py-3 text-xs text-blue-700">
+                                                Keep vendor and pricing details up to date so requisitions always reflect current costs.
+                                            </div>
+
+                                            <div class="flex items-center justify-end gap-3">
+                                                <button type="button" class="text-sm font-medium text-gray-500 hover:text-gray-700" @click="close('showItemModal')">Cancel</button>
+                                                <button type="submit" class="inline-flex items-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700">
+                                                    {{ $isEditingItem ? 'Save Item' : 'Create Item' }}
+                                                </button>
+                                            </div>
+                                        </form>
                                     </div>
                                 </div>
+                            </div>
 
-                                <!-- Add Category Modal -->
-                                <div x-show="showCategoryModal" 
-                                     class="fixed inset-0 z-50 overflow-y-auto" 
-                                     x-cloak
-                                     style="display: none;">
-                                    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-                                        <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" @click="showCategoryModal = false"></div>
-                                        
-                                        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-                                            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                                                <div class="flex items-start justify-between mb-4">
-                                                    <h3 class="text-lg font-medium text-gray-900">Manage Categories</h3>
-                                                    <button @click="showCategoryModal = false" class="text-gray-400 hover:text-gray-500">
-                                                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                                        </svg>
-                                                    </button>
-                                                </div>
-
-                                                <!-- Add New Category Form -->
-                                                <div class="mb-4">
-                                                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                                                        Add New Category
-                                                    </label>
-                                                    <div class="flex gap-2">
-                                                        <input type="text" 
-                                                               x-model="newCategory" 
-                                                               @keydown.enter="addCategory()"
-                                                               placeholder="Enter category name"
-                                                               class="flex-1 px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                                                        <button @click="addCategory()" 
-                                                                type="button"
-                                                                class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
-                                                            <svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                                                            </svg>
-                                                            Add
-                                                        </button>
-                                                    </div>
-                                                </div>
-
-                                                <!-- Categories List -->
-                                                <div class="border rounded-lg">
-                                                    <div class="bg-gray-50 px-4 py-2 border-b">
-                                                        <h4 class="text-sm font-medium text-gray-900">Existing Categories</h4>
-                                                    </div>
-                                                    <div class="max-h-64 overflow-y-auto">
-                                                        <template x-for="category in categories" :key="category">
-                                                            <div class="flex items-center justify-between px-4 py-3 border-b last:border-b-0 hover:bg-gray-50">
-                                                                <span class="text-sm text-gray-900" x-text="category"></span>
-                                                                <button @click="deleteCategory(category)" 
-                                                                        type="button"
-                                                                        class="text-red-600 hover:text-red-900 text-sm">
-                                                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                                                    </svg>
-                                                                </button>
-                                                            </div>
-                                                        </template>
-                                                    </div>
-                                                </div>
-
-                                                <div class="mt-4 flex justify-end">
-                                                    <button @click="showCategoryModal = false" 
-                                                            type="button" 
-                                                            class="inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:text-sm">
-                                                        Done
-                                                    </button>
-                                                </div>
-                                            </div>
+                            <!-- Category Modal -->
+                            <div
+                                x-cloak
+                                x-show="showCategoryModal"
+                                x-transition:enter="transition ease-out duration-200"
+                                x-transition:enter-start="opacity-0"
+                                x-transition:enter-end="opacity-100"
+                                x-transition:leave="transition ease-in duration-150"
+                                x-transition:leave-start="opacity-100"
+                                x-transition:leave-end="opacity-0"
+                                @keydown.escape.window="close('showCategoryModal')"
+                                class="fixed inset-0 z-40 flex items-center justify-center bg-gray-900/60 px-4 py-6"
+                                @click.self="close('showCategoryModal')"
+                            >
+                                <div class="w-full max-w-md overflow-hidden rounded-lg bg-white shadow-2xl">
+                                    <div class="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+                                        <div>
+                                            <h3 class="text-lg font-semibold text-gray-900">Create Category</h3>
+                                            <p class="mt-1 text-sm text-gray-500">Add reusable categories for your item catalog.</p>
                                         </div>
+                                        <button type="button" class="text-gray-400 hover:text-gray-600" @click="close('showCategoryModal')">
+                                            <span class="sr-only">Close</span>
+                                            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    <div class="px-6 py-6">
+                                        @if ($errors->categories->any())
+                                            <div class="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                                                <ul class="list-disc space-y-1 pl-4">
+                                                    @foreach ($errors->categories->all() as $error)
+                                                        <li>{{ $error }}</li>
+                                                    @endforeach
+                                                </ul>
+                                            </div>
+                                        @endif
+
+                                        <form action="{{ route('item-categories.store') }}" method="POST" class="space-y-4">
+                                            @csrf
+                                            <div>
+                                                <label for="category-name" class="block text-sm font-medium text-gray-700">Category Name <span class="text-red-500">*</span></label>
+                                                <input id="category-name" name="category_name" type="text" value="{{ old('category_name') }}" required class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                            </div>
+                                            <div>
+                                                <label for="category-status" class="block text-sm font-medium text-gray-700">Status <span class="text-red-500">*</span></label>
+                                                <select id="category-status" name="category_status" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                                    @php $categoryStatus = old('category_status', 'active'); @endphp
+                                                    <option value="active" @selected($categoryStatus === 'active')>Active</option>
+                                                    <option value="inactive" @selected($categoryStatus === 'inactive')>Inactive</option>
+                                                </select>
+                                            </div>
+                                            <div class="flex items-center justify-end gap-3">
+                                                <button type="button" class="text-sm font-medium text-gray-500 hover:text-gray-700" @click="close('showCategoryModal')">Cancel</button>
+                                                <button type="submit" class="inline-flex items-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700">
+                                                    Save Category
+                                                </button>
+                                            </div>
+                                        </form>
                                     </div>
                                 </div>
+                            </div>
 
-                                <!-- Add Vendor Modal -->
-                                <div x-show="showVendorModal" 
-                                     class="fixed inset-0 z-50 overflow-y-auto" 
-                                     x-cloak
-                                     style="display: none;">
-                                    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-                                        <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" @click="showVendorModal = false"></div>
-                                        
-                                        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-                                            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                                                <div class="flex items-start justify-between mb-4">
-                                                    <h3 class="text-lg font-medium text-gray-900">Manage Vendors</h3>
-                                                    <button @click="showVendorModal = false" class="text-gray-400 hover:text-gray-500">
-                                                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                                        </svg>
-                                                    </button>
-                                                </div>
-
-                                                <!-- Add New Vendor Form -->
-                                                <div class="mb-4">
-                                                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                                                        Add New Vendor
-                                                    </label>
-                                                    <div class="flex gap-2">
-                                                        <input type="text" 
-                                                               x-model="newVendor" 
-                                                               @keydown.enter="addVendor()"
-                                                               placeholder="Enter vendor name"
-                                                               class="flex-1 px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                                                        <button @click="addVendor()" 
-                                                                type="button"
-                                                                class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
-                                                            <svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                                                            </svg>
-                                                            Add
-                                                        </button>
-                                                    </div>
-                                                </div>
-
-                                                <!-- Vendors List -->
-                                                <div class="border rounded-lg">
-                                                    <div class="bg-gray-50 px-4 py-2 border-b">
-                                                        <h4 class="text-sm font-medium text-gray-900">Existing Vendors</h4>
-                                                    </div>
-                                                    <div class="max-h-64 overflow-y-auto">
-                                                        <template x-for="vendor in vendors" :key="vendor">
-                                                            <div class="flex items-center justify-between px-4 py-3 border-b last:border-b-0 hover:bg-gray-50">
-                                                                <span class="text-sm text-gray-900" x-text="vendor"></span>
-                                                                <button @click="deleteVendor(vendor)" 
-                                                                        type="button"
-                                                                        class="text-red-600 hover:text-red-900 text-sm">
-                                                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                                                    </svg>
-                                                                </button>
-                                                            </div>
-                                                        </template>
-                                                    </div>
-                                                </div>
-
-                                                <div class="mt-4 flex justify-end">
-                                                    <button @click="showVendorModal = false" 
-                                                            type="button" 
-                                                            class="inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:text-sm">
-                                                        Done
-                                                    </button>
-                                                </div>
-                                            </div>
+                            <!-- Vendor Modal -->
+                            <div
+                                x-cloak
+                                x-show="showVendorModal"
+                                x-transition:enter="transition ease-out duration-200"
+                                x-transition:enter-start="opacity-0"
+                                x-transition:enter-end="opacity-100"
+                                x-transition:leave="transition ease-in duration-150"
+                                x-transition:leave-start="opacity-100"
+                                x-transition:leave-end="opacity-0"
+                                @keydown.escape.window="close('showVendorModal')"
+                                class="fixed inset-0 z-40 flex items-center justify-center bg-gray-900/60 px-4 py-6"
+                                @click.self="close('showVendorModal')"
+                            >
+                                <div class="w-full max-w-md overflow-hidden rounded-lg bg-white shadow-2xl">
+                                    <div class="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+                                        <div>
+                                            <h3 class="text-lg font-semibold text-gray-900">Create Vendor</h3>
+                                            <p class="mt-1 text-sm text-gray-500">Keep vendor contact details handy for requisitions and POs.</p>
                                         </div>
+                                        <button type="button" class="text-gray-400 hover:text-gray-600" @click="close('showVendorModal')">
+                                            <span class="sr-only">Close</span>
+                                            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    <div class="px-6 py-6">
+                                        @if ($errors->vendors->any())
+                                            <div class="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                                                <ul class="list-disc space-y-1 pl-4">
+                                                    @foreach ($errors->vendors->all() as $error)
+                                                        <li>{{ $error }}</li>
+                                                    @endforeach
+                                                </ul>
+                                            </div>
+                                        @endif
+
+                                        <form action="{{ route('vendors.store') }}" method="POST" class="space-y-4">
+                                            @csrf
+                                            <div>
+                                                <label for="vendor-name" class="block text-sm font-medium text-gray-700">Vendor Name <span class="text-red-500">*</span></label>
+                                                <input id="vendor-name" name="vendor_name" type="text" value="{{ old('vendor_name') }}" required class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                            </div>
+                                            <div>
+                                                <label for="vendor-phone" class="block text-sm font-medium text-gray-700">Phone Number</label>
+                                                <input id="vendor-phone" name="vendor_phone" type="text" value="{{ old('vendor_phone') }}" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" placeholder="e.g. +255 700 000 000">
+                                            </div>
+                                            <div>
+                                                <label for="vendor-status" class="block text-sm font-medium text-gray-700">Status <span class="text-red-500">*</span></label>
+                                                @php $vendorStatus = old('vendor_status', 'active'); @endphp
+                                                <select id="vendor-status" name="vendor_status" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                                    <option value="active" @selected($vendorStatus === 'active')>Active</option>
+                                                    <option value="inactive" @selected($vendorStatus === 'inactive')>Inactive</option>
+                                                </select>
+                                            </div>
+                                            <div class="flex items-center justify-end gap-3">
+                                                <button type="button" class="text-sm font-medium text-gray-500 hover:text-gray-700" @click="close('showVendorModal')">Cancel</button>
+                                                <button type="submit" class="inline-flex items-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700">
+                                                    Save Vendor
+                                                </button>
+                                            </div>
+                                        </form>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- User Management -->
-                        <div x-show="activeTab === 'users'" 
-                             x-data="{
-                                showAddModal: false,
-                                editingUser: null,
-                                users: [
-                                    { id: 1, name: 'Admin User', email: 'admin@example.com', role: 'admin', status: 'active', last_login: '2 hours ago' },
-                                    { id: 2, name: 'Manager User', email: 'manager@example.com', role: 'manager', status: 'active', last_login: '5 hours ago' },
-                                    { id: 3, name: 'Chef User', email: 'chef@example.com', role: 'chef', status: 'active', last_login: '1 day ago' },
-                                    { id: 4, name: 'Purchaser User', email: 'purchaser@example.com', role: 'purchaser', status: 'active', last_login: '3 days ago' }
-                                ],
-                                addUser() {
-                                    this.editingUser = null;
-                                    this.showAddModal = true;
-                                },
-                                editUser(user) {
-                                    this.editingUser = {...user};
-                                    this.showAddModal = true;
-                                }
-                             }"
-                             class="space-y-6">
-                            <div class="flex items-center justify-between">
-                                <h3 class="text-lg font-medium text-gray-900">User Management</h3>
-                                <button @click="addUser()" 
-                                        type="button"
-                                        class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
-                                    <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                                    </svg>
-                                    Add New User
-                                </button>
+                    <!-- User Management -->
+                    <div x-show="activeTab === 'users'" x-cloak class="space-y-6">
+                            @php
+                                $isAdmin = auth()->user()->hasRole('admin');
+                                $roleDisplayName = static fn (string $role): string => Str::title(str_replace(['_', '-'], ' ', $role));
+                            @endphp
+
+                            <div class="flex flex-wrap items-center justify-between gap-3">
+                                <div>
+                                    <h3 class="text-lg font-medium text-gray-900">User Management</h3>
+                                    <p class="mt-1 text-sm text-gray-600">Invite teammates, assign roles, and resend onboarding emails.</p>
+                                </div>
+                                <div class="text-sm text-gray-500">
+                                    {{ $users->count() }} users &middot; {{ $roles->count() }} roles available
+                                </div>
                             </div>
 
-                            <!-- Users Table -->
-                            <div class="border border-gray-200 rounded-lg overflow-hidden">
-                                <table class="min-w-full divide-y divide-gray-200">
-                                    <thead class="bg-gray-50">
-                                        <tr>
-                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Login</th>
-                                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="bg-white divide-y divide-gray-200">
-                                        <template x-for="user in users" :key="user.id">
-                                            <tr class="hover:bg-gray-50">
-                                                <td class="px-6 py-4 whitespace-nowrap">
-                                                    <div class="flex items-center">
-                                                        <div class="flex-shrink-0 h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
-                                                            <span class="text-blue-600 font-medium text-sm" x-text="user.name.charAt(0)"></span>
-                                                        </div>
-                                                        <div class="ml-4">
-                                                            <div class="text-sm font-medium text-gray-900" x-text="user.name"></div>
-                                                            <div class="text-sm text-gray-500" x-text="user.email"></div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td class="px-6 py-4 whitespace-nowrap">
-                                                    <span x-text="user.role" 
-                                                          :class="{
-                                                              'bg-purple-100 text-purple-800': user.role === 'admin',
-                                                              'bg-blue-100 text-blue-800': user.role === 'manager',
-                                                              'bg-green-100 text-green-800': user.role === 'chef',
-                                                              'bg-yellow-100 text-yellow-800': user.role === 'purchaser'
-                                                          }"
-                                                          class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full capitalize">
-                                                    </span>
-                                                </td>
-                                                <td class="px-6 py-4 whitespace-nowrap">
-                                                    <span :class="user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'" 
-                                                          class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full capitalize"
-                                                          x-text="user.status">
-                                                    </span>
-                                                </td>
-                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" x-text="user.last_login"></td>
-                                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                    <button @click="editUser(user)" 
-                                                            type="button"
-                                                            class="text-blue-600 hover:text-blue-900 mr-4">
-                                                        Edit
-                                                    </button>
-                                                    <button type="button" 
-                                                            class="text-red-600 hover:text-red-900">
-                                                        Delete
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        </template>
-                                    </tbody>
-                                </table>
-                            </div>
+                            @if ($errors->invite->any())
+                                <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                                    <h4 class="font-semibold">Invitation could not be sent:</h4>
+                                    <ul class="mt-2 list-disc space-y-1 pl-5">
+                                        @foreach ($errors->invite->all() as $error)
+                                            <li>{{ $error }}</li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            @endif
 
-                            <!-- Add/Edit User Modal -->
-                            <div x-show="showAddModal" 
-                                 x-cloak
-                                 class="fixed inset-0 z-50 overflow-y-auto" 
-                                 aria-labelledby="modal-title" 
-                                 role="dialog" 
-                                 aria-modal="true">
-                                <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-                                    <div x-show="showAddModal" 
-                                         x-transition:enter="ease-out duration-300"
-                                         x-transition:enter-start="opacity-0"
-                                         x-transition:enter-end="opacity-100"
-                                         x-transition:leave="ease-in duration-200"
-                                         x-transition:leave-start="opacity-100"
-                                         x-transition:leave-end="opacity-0"
-                                         class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" 
-                                         @click="showAddModal = false"></div>
+                            @if ($errors->roles->any())
+                                <div class="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+                                    <h4 class="font-semibold">Role update issue</h4>
+                                    <p class="mt-1">{{ $errors->roles->first() }}</p>
+                                </div>
+                            @endif
 
-                                    <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+                            <div class="grid gap-6 lg:grid-cols-3">
+                                @if($isAdmin)
+                                    <div class="lg:col-span-1">
+                                        <div class="rounded-lg border border-gray-200 p-6 shadow-sm">
+                                            <h4 class="text-base font-semibold text-gray-900">Invite a user</h4>
+                                            <p class="mt-1 text-xs text-gray-500">We will email a password setup link immediately.</p>
 
-                                    <div x-show="showAddModal"
-                                         x-transition:enter="ease-out duration-300"
-                                         x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                                         x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
-                                         x-transition:leave="ease-in duration-200"
-                                         x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
-                                         x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                                         class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
-                                        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                                            <div class="sm:flex sm:items-start">
-                                                <div class="w-full mt-3 text-center sm:mt-0 sm:text-left">
-                                                    <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4" id="modal-title">
-                                                        <span x-text="editingUser ? 'Edit User' : 'Add New User'"></span>
-                                                    </h3>
-                                                    <div class="space-y-4">
-                                                        <!-- Name -->
-                                                        <div>
-                                                            <label class="block text-sm font-medium text-gray-700 mb-1">
-                                                                Full Name <span class="text-red-500">*</span>
+                                            <form action="{{ route('admin.users.invite') }}" method="POST" class="mt-4 space-y-4">
+                                                @csrf
+
+                                                <div>
+                                                    <label for="invite-name" class="block text-sm font-medium text-gray-700">Full name</label>
+                                                    <input id="invite-name" name="name" type="text" value="{{ old('name') }}" required class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                                </div>
+
+                                                <div>
+                                                    <label for="invite-email" class="block text-sm font-medium text-gray-700">Email address</label>
+                                                    <input id="invite-email" name="email" type="email" value="{{ old('email') }}" required class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                                </div>
+
+                                                <div>
+                                                    <span class="block text-sm font-medium text-gray-700">Assign roles</span>
+                                                    <div class="mt-2 grid grid-cols-1 gap-2">
+                                                        @foreach ($roles as $role)
+                                                            <label class="flex items-center gap-2 text-sm text-gray-700">
+                                                                <input type="checkbox" name="roles[]" value="{{ $role->name }}" @checked(collect(old('roles', []))->contains($role->name)) class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                                                <span>{{ $roleDisplayName($role->name) }}</span>
                                                             </label>
-                                                            <input type="text" 
-                                                                   :value="editingUser ? editingUser.name : ''"
-                                                                   class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                                                                   placeholder="John Doe">
-                                                        </div>
-
-                                                        <!-- Email -->
-                                                        <div>
-                                                            <label class="block text-sm font-medium text-gray-700 mb-1">
-                                                                Email Address <span class="text-red-500">*</span>
-                                                            </label>
-                                                            <input type="email" 
-                                                                   :value="editingUser ? editingUser.email : ''"
-                                                                   class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                                                                   placeholder="john@example.com">
-                                                        </div>
-
-                                                        <!-- Role -->
-                                                        <div>
-                                                            <label class="block text-sm font-medium text-gray-700 mb-1">
-                                                                Role <span class="text-red-500">*</span>
-                                                            </label>
-                                                            <select class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                                                                <option value="">Select role</option>
-                                                                <option value="admin">Admin</option>
-                                                                <option value="manager">Manager</option>
-                                                                <option value="chef">Chef</option>
-                                                                <option value="purchaser">Purchaser</option>
-                                                                <option value="accountant">Accountant</option>
-                                                                <option value="viewer">Viewer</option>
-                                                            </select>
-                                                        </div>
-
-                                                        <!-- Password (only for new users) -->
-                                                        <div x-show="!editingUser">
-                                                            <label class="block text-sm font-medium text-gray-700 mb-1">
-                                                                Password <span class="text-red-500">*</span>
-                                                            </label>
-                                                            <input type="password" 
-                                                                   class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                                                                   placeholder="••••••••">
-                                                        </div>
-
-                                                        <!-- Permissions -->
-                                                        <div>
-                                                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                                                Permissions
-                                                            </label>
-                                                            <div class="grid grid-cols-2 gap-3 max-h-48 overflow-y-auto border border-gray-200 rounded-md p-3">
-                                                                <label class="flex items-center">
-                                                                    <input type="checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                                                                    <span class="ml-2 text-sm text-gray-700">View Requisitions</span>
-                                                                </label>
-                                                                <label class="flex items-center">
-                                                                    <input type="checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                                                                    <span class="ml-2 text-sm text-gray-700">Create Requisitions</span>
-                                                                </label>
-                                                                <label class="flex items-center">
-                                                                    <input type="checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                                                                    <span class="ml-2 text-sm text-gray-700">Approve Requisitions</span>
-                                                                </label>
-                                                                <label class="flex items-center">
-                                                                    <input type="checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                                                                    <span class="ml-2 text-sm text-gray-700">Reject Requisitions</span>
-                                                                </label>
-                                                                <label class="flex items-center">
-                                                                    <input type="checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                                                                    <span class="ml-2 text-sm text-gray-700">View Purchase Orders</span>
-                                                                </label>
-                                                                <label class="flex items-center">
-                                                                    <input type="checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                                                                    <span class="ml-2 text-sm text-gray-700">Create Purchase Orders</span>
-                                                                </label>
-                                                                <label class="flex items-center">
-                                                                    <input type="checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                                                                    <span class="ml-2 text-sm text-gray-700">View Expenses</span>
-                                                                </label>
-                                                                <label class="flex items-center">
-                                                                    <input type="checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                                                                    <span class="ml-2 text-sm text-gray-700">Create Expenses</span>
-                                                                </label>
-                                                                <label class="flex items-center">
-                                                                    <input type="checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                                                                    <span class="ml-2 text-sm text-gray-700">View Reports</span>
-                                                                </label>
-                                                                <label class="flex items-center">
-                                                                    <input type="checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                                                                    <span class="ml-2 text-sm text-gray-700">Manage Payroll</span>
-                                                                </label>
-                                                                <label class="flex items-center">
-                                                                    <input type="checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                                                                    <span class="ml-2 text-sm text-gray-700">View Users</span>
-                                                                </label>
-                                                                <label class="flex items-center">
-                                                                    <input type="checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                                                                    <span class="ml-2 text-sm text-gray-700">Manage Users</span>
-                                                                </label>
-                                                                <label class="flex items-center">
-                                                                    <input type="checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                                                                    <span class="ml-2 text-sm text-gray-700">View Settings</span>
-                                                                </label>
-                                                                <label class="flex items-center">
-                                                                    <input type="checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                                                                    <span class="ml-2 text-sm text-gray-700">Manage Settings</span>
-                                                                </label>
-                                                            </div>
-                                                        </div>
-
-                                                        <!-- Status -->
-                                                        <div>
-                                                            <label class="block text-sm font-medium text-gray-700 mb-1">
-                                                                Status
-                                                            </label>
-                                                            <select class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                                                                <option value="active">Active</option>
-                                                                <option value="inactive">Inactive</option>
-                                                            </select>
-                                                        </div>
-
-                                                        <!-- Send Welcome Email -->
-                                                        <div x-show="!editingUser">
-                                                            <label class="flex items-center">
-                                                                <input type="checkbox" checked class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                                                                <span class="ml-2 text-sm text-gray-700">Send welcome email with login credentials</span>
-                                                            </label>
-                                                        </div>
+                                                        @endforeach
                                                     </div>
                                                 </div>
+
+                                                <label class="flex items-center gap-2 text-sm text-gray-700">
+                                                    <input type="checkbox" name="send_reset" value="1" @checked(old('send_reset', true)) class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                                    Send password setup email now
+                                                </label>
+
+                                                <button type="submit" class="inline-flex w-full items-center justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700">
+                                                    Send Invitation
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                @endif
+
+                                <div class="{{ $isAdmin ? 'lg:col-span-2' : 'lg:col-span-3' }} space-y-4">
+                                    @forelse ($users as $user)
+                                        @php
+                                            $currentRoles = $user->roles->pluck('name')->all();
+                                            $oldRoles = $currentRoles;
+                                            if (old('_target_user_id') && (int) old('_target_user_id') === $user->id) {
+                                                $oldRoles = old('roles', $currentRoles);
+                                            }
+                                        @endphp
+                                        <div class="rounded-lg border border-gray-200 p-5 shadow-sm">
+                                            <div class="flex flex-wrap items-center justify-between gap-3">
+                                                <div>
+                                                    <div class="text-sm font-semibold text-gray-900">{{ $user->name }}</div>
+                                                    <div class="text-sm text-gray-500">{{ $user->email }}</div>
+                                                </div>
+                                                <div class="flex flex-wrap gap-2">
+                                                    @forelse ($user->roles as $role)
+                                                        <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">{{ $roleDisplayName($role->name) }}</span>
+                                                    @empty
+                                                        <span class="text-xs italic text-gray-500">No roles assigned</span>
+                                                    @endforelse
+                                                </div>
                                             </div>
+
+                                            <div class="mt-4 flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                                                <span>Joined {{ optional($user->created_at)->format('M d, Y') ?? '—' }}</span>
+                                                <span aria-hidden="true">•</span>
+                                                <span>Last login {{ optional($user->last_login_at)->diffForHumans() ?? '—' }}</span>
+                                            </div>
+
+                                            @if($isAdmin)
+                                                @if(auth()->id() === $user->id)
+                                                    <div class="mt-4 rounded-md bg-gray-50 px-3 py-3 text-xs text-gray-500">
+                                                        You are viewing your account. Another admin must update your roles.
+                                                    </div>
+                                                @else
+                                                    <div class="mt-4 space-y-4 border-t border-gray-200 pt-4">
+                                                        <form action="{{ route('admin.users.roles.update', $user) }}" method="POST" class="space-y-3">
+                                                            @csrf
+                                                            @method('PUT')
+                                                            <input type="hidden" name="_target_user_id" value="{{ $user->id }}">
+                                                            <span class="text-sm font-medium text-gray-700">Update roles</span>
+                                                            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                                                @foreach ($roles as $role)
+                                                                    <label class="flex items-start gap-2 text-sm text-gray-700">
+                                                                        <input type="checkbox" name="roles[]" value="{{ $role->name }}" @checked(in_array($role->name, $oldRoles ?? [])) class="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                                                        <span>{{ $roleDisplayName($role->name) }}</span>
+                                                                    </label>
+                                                                @endforeach
+                                                            </div>
+                                                            <button type="submit" class="inline-flex items-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+                                                                Save Roles
+                                                            </button>
+                                                        </form>
+
+                                                        <form action="{{ route('admin.users.resend-invite', $user) }}" method="POST" class="inline-flex">
+                                                            @csrf
+                                                            <button type="submit" class="text-sm font-medium text-blue-600 hover:text-blue-700">
+                                                                Resend invitation email
+                                                            </button>
+                                                        </form>
+                                                    </div>
+                                                @endif
+                                            @endif
                                         </div>
-                                        <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                                            <button type="button" 
-                                                    @click="showAddModal = false"
-                                                    class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
-                                                <span x-text="editingUser ? 'Update User' : 'Create User'"></span>
-                                            </button>
-                                            <button type="button" 
-                                                    @click="showAddModal = false"
-                                                    class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:w-auto sm:text-sm">
-                                                Cancel
-                                            </button>
+                                    @empty
+                                        <div class="rounded-lg border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500">
+                                            No users found for this entity yet.
                                         </div>
-                                    </div>
+                                    @endforelse
                                 </div>
                             </div>
 
-                            <!-- Role Descriptions -->
-                            <div class="bg-gray-50 rounded-lg p-4">
-                                <h4 class="text-sm font-medium text-gray-900 mb-3">Role Descriptions</h4>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                                    <div>
-                                        <span class="font-medium text-purple-700">Admin:</span>
-                                        <span class="text-gray-600"> Full system access and user management</span>
-                                    </div>
-                                    <div>
-                                        <span class="font-medium text-blue-700">Manager:</span>
-                                        <span class="text-gray-600"> Approve requisitions, view reports</span>
-                                    </div>
-                                    <div>
-                                        <span class="font-medium text-green-700">Chef:</span>
-                                        <span class="text-gray-600"> Create requisitions, view inventory</span>
-                                    </div>
-                                    <div>
-                                        <span class="font-medium text-yellow-700">Purchaser:</span>
-                                        <span class="text-gray-600"> Create purchase orders, manage suppliers</span>
-                                    </div>
-                                    <div>
-                                        <span class="font-medium text-indigo-700">Accountant:</span>
-                                        <span class="text-gray-600"> Manage expenses, view financial reports</span>
-                                    </div>
-                                    <div>
-                                        <span class="font-medium text-gray-700">Viewer:</span>
-                                        <span class="text-gray-600"> Read-only access to all modules</span>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="rounded-lg bg-gray-50 p-4 text-sm text-gray-600">
+                            <h4 class="font-medium text-gray-900">Role overview</h4>
+                            <p class="mt-2">Assign at least one administrator so there is always someone who can manage access and invitations.</p>
                         </div>
-
-                        <!-- Form Actions -->
-                        <div class="pt-6 border-t border-gray-200">
-                            <div class="flex items-center justify-end space-x-4">
-                                <a href="{{ route('dashboard') }}" class="px-6 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                    Cancel
-                                </a>
-                                <button type="submit" class="px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                    <span class="flex items-center">
-                                        <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                                        </svg>
-                                        Save Changes
-                                    </span>
-                                </button>
-                            </div>
-                        </div>
-                    </form>
+                    </div>
                 </div>
             </div>
 

@@ -2,7 +2,13 @@
 
 namespace Database\Seeders;
 
+use App\Models\Entity;
 use App\Models\User;
+use App\Models\EntityGeneralSetting;
+use App\Models\EntityProfileSetting;
+use App\Models\EntityNotificationSetting;
+use App\Models\EntityIntegrationSetting;
+use App\Models\EntitySecuritySetting;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -137,10 +143,68 @@ class DatabaseSeeder extends Seeder
             'export reports',
         ]);
 
+        // Ensure default entity exists
+        $entity = Entity::firstOrCreate(
+            ['slug' => 'default'],
+            [
+                'name' => config('app.name', 'Restaurant Management System'),
+                'timezone' => config('app.timezone', 'America/Los_Angeles'),
+                'currency' => 'USD',
+                'is_active' => true,
+            ]
+        );
+
+        EntityGeneralSetting::firstOrCreate(
+            ['entity_id' => $entity->id],
+            [
+                'timezone' => $entity->timezone,
+                'currency' => $entity->currency,
+                'date_format' => 'm/d/Y',
+                'language' => config('app.locale', 'en'),
+            ]
+        );
+
+        EntityProfileSetting::firstOrCreate(
+            ['entity_id' => $entity->id],
+            [
+                'restaurant_name' => $entity->name,
+                'email' => 'info@restaurant.com',
+                'phone' => '+1-555-0100',
+            ]
+        );
+
+        EntityNotificationSetting::firstOrCreate(
+            ['entity_id' => $entity->id],
+            [
+                'notify_requisitions' => true,
+                'notify_expenses' => true,
+                'notify_purchase_orders' => true,
+                'notify_payroll' => false,
+                'notify_email_daily' => false,
+                'sms_enabled' => false,
+                'whatsapp_enabled' => false,
+                'sms_provider' => 'twilio',
+            ]
+        );
+
+        EntityIntegrationSetting::firstOrCreate(['entity_id' => $entity->id]);
+
+        EntitySecuritySetting::firstOrCreate(
+            ['entity_id' => $entity->id],
+            [
+                'two_factor_enabled' => false,
+                'session_timeout_enabled' => false,
+                'session_timeout_minutes' => 30,
+                'password_expiry_enabled' => false,
+                'password_expiry_days' => 90,
+            ]
+        );
+
         // Create Test Users
         
         // Admin User
         $adminUser = User::create([
+            'entity_id' => $entity->id,
             'name' => 'System Admin',
             'email' => 'admin@restaurant.com',
             'password' => Hash::make('password'),
@@ -150,6 +214,7 @@ class DatabaseSeeder extends Seeder
 
         // Manager User
         $managerUser = User::create([
+            'entity_id' => $entity->id,
             'name' => 'Restaurant Manager',
             'email' => 'manager@restaurant.com',
             'password' => Hash::make('password'),
@@ -159,6 +224,7 @@ class DatabaseSeeder extends Seeder
 
         // Chef User
         $chefUser = User::create([
+            'entity_id' => $entity->id,
             'name' => 'Head Chef',
             'email' => 'chef@restaurant.com',
             'password' => Hash::make('password'),
@@ -168,6 +234,7 @@ class DatabaseSeeder extends Seeder
 
         // Purchaser User
         $purchaserUser = User::create([
+            'entity_id' => $entity->id,
             'name' => 'Purchase Officer',
             'email' => 'purchaser@restaurant.com',
             'password' => Hash::make('password'),
@@ -177,6 +244,7 @@ class DatabaseSeeder extends Seeder
 
         // Finance User
         $financeUser = User::create([
+            'entity_id' => $entity->id,
             'name' => 'Finance Manager',
             'email' => 'finance@restaurant.com',
             'password' => Hash::make('password'),
@@ -186,6 +254,7 @@ class DatabaseSeeder extends Seeder
 
         // Auditor User
         $auditorUser = User::create([
+            'entity_id' => $entity->id,
             'name' => 'Internal Auditor',
             'email' => 'auditor@restaurant.com',
             'password' => Hash::make('password'),

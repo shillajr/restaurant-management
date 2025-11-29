@@ -31,7 +31,7 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm opacity-90">Active Loans</p>
-                        <p class="mt-2 text-3xl font-bold">{{ $activeLoansCount }}</p>
+                        <p class="mt-2 text-xl font-bold">{{ $activeLoansCount }}</p>
                     </div>
                     <div class="rounded-full bg-white/20 p-3">
                         <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -39,14 +39,14 @@
                         </svg>
                     </div>
                 </div>
-                <p class="mt-4 text-sm opacity-90">KES {{ number_format($totalActiveBalance, 2) }} outstanding</p>
+                <p class="mt-4 text-sm opacity-90">{{ currency_format($totalActiveBalance) }} outstanding</p>
             </div>
 
             <div class="rounded-lg bg-gradient-to-br from-red-500 to-pink-600 p-6 text-white shadow-lg">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm opacity-90">Outstanding Balance</p>
-                        <p class="mt-2 text-3xl font-bold">KES {{ number_format($totalActiveBalance, 2) }}</p>
+                        <p class="mt-2 text-xl font-bold">{{ currency_format($totalActiveBalance) }}</p>
                     </div>
                     <div class="rounded-full bg-white/20 p-3">
                         <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -61,7 +61,7 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm opacity-90">Total Issued</p>
-                        <p class="mt-2 text-3xl font-bold">KES {{ number_format($totalIssued, 2) }}</p>
+                        <p class="mt-2 text-xl font-bold">{{ currency_format($totalIssued) }}</p>
                     </div>
                     <div class="rounded-full bg-white/20 p-3">
                         <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -76,7 +76,7 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm opacity-90">Total Repaid</p>
-                        <p class="mt-2 text-3xl font-bold">KES {{ number_format($totalRepaid, 2) }}</p>
+                        <p class="mt-2 text-xl font-bold">{{ currency_format($totalRepaid) }}</p>
                     </div>
                     <div class="rounded-full bg-white/20 p-3">
                         <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -209,7 +209,7 @@
                             </div>
                         </td>
                         <td class="px-6 py-4">
-                            <div class="text-sm font-semibold text-gray-900">KES {{ number_format($loan->amount, 2) }}</div>
+                            <div class="text-sm font-semibold text-gray-900">{{ currency_format($loan->amount) }}</div>
                             <div class="text-xs text-gray-500">Original amount</div>
                         </td>
                         <td class="px-6 py-4">
@@ -219,12 +219,12 @@
                             {{ $loan->issue_date->format('d M Y') }}
                         </td>
                         <td class="px-6 py-4">
-                            <div class="text-sm font-medium text-gray-900">KES {{ number_format($loan->repayment_per_cycle, 2) }}</div>
+                            <div class="text-sm font-medium text-gray-900">{{ currency_format($loan->repayment_per_cycle) }}</div>
                             <div class="text-xs text-gray-500">Per month</div>
                         </td>
                         <td class="px-6 py-4">
                             <div class="text-sm font-semibold {{ $loan->balance > 0 ? 'text-red-600' : 'text-green-600' }}">
-                                KES {{ number_format($loan->balance, 2) }}
+                                {{ currency_format($loan->balance) }}
                             </div>
                             @if($loan->balance > 0)
                                 <div class="text-xs text-gray-500">

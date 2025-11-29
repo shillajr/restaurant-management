@@ -67,7 +67,7 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm font-medium text-gray-600">Total Salaries</p>
-                        <p class="mt-2 text-3xl font-bold text-blue-900">KES {{ number_format($summary['totals']['monthly_salary'], 2) }}</p>
+                        <p class="mt-2 text-3xl font-bold text-blue-900">{{ currency_format($summary['totals']['monthly_salary']) }}</p>
                     </div>
                     <div class="rounded-full bg-blue-100 p-3">
                         <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -81,7 +81,7 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm font-medium text-gray-600">Previous Debts</p>
-                        <p class="mt-2 text-3xl font-bold text-red-900">KES {{ number_format($summary['totals']['previous_debt'], 2) }}</p>
+                        <p class="mt-2 text-3xl font-bold text-red-900">{{ currency_format($summary['totals']['previous_debt']) }}</p>
                     </div>
                     <div class="rounded-full bg-red-100 p-3">
                         <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -95,7 +95,7 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm font-medium text-gray-600">Expected Total</p>
-                        <p class="mt-2 text-3xl font-bold text-green-900">KES {{ number_format($summary['totals']['total_due'], 2) }}</p>
+                        <p class="mt-2 text-3xl font-bold text-green-900">{{ currency_format($summary['totals']['total_due']) }}</p>
                     </div>
                     <div class="rounded-full bg-green-100 p-3">
                         <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -156,36 +156,36 @@
                                     {{ $employee['name'] }}
                                 </td>
                                 <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                                    KES {{ number_format($employee['monthly_salary'], 2) }}
+                                    {{ currency_format($employee['monthly_salary']) }}
                                 </td>
                                 <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-600">
-                                    KES {{ number_format($employee['daily_rate'], 2) }}
+                                    {{ currency_format($employee['daily_rate']) }}
                                 </td>
                                 <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
                                     {{ $employee['absent_days'] }} days
                                 </td>
                                 <td class="whitespace-nowrap px-6 py-4 text-sm text-red-600">
-                                    -KES {{ number_format($employee['absent_days_deduction'], 2) }}
+                                    {{ currency_format(-$employee['absent_days_deduction']) }}
                                 </td>
                                 <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-blue-600">
-                                    KES {{ number_format($employee['base_salary_payable'], 2) }}
+                                    {{ currency_format($employee['base_salary_payable']) }}
                                 </td>
                                 <td class="whitespace-nowrap px-6 py-4 text-sm text-orange-600">
                                     @if($employee['previous_debt'] > 0)
-                                        +KES {{ number_format($employee['previous_debt'], 2) }}
+                                        +{{ currency_format($employee['previous_debt']) }}
                                     @else
                                         <span class="text-gray-400">None</span>
                                     @endif
                                 </td>
                                 <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-600">
                                     @if($employee['pending_loans'] > 0)
-                                        KES {{ number_format($employee['pending_loans'], 2) }}
+                                        {{ currency_format($employee['pending_loans']) }}
                                     @else
                                         <span class="text-gray-400">None</span>
                                     @endif
                                 </td>
                                 <td class="whitespace-nowrap px-6 py-4 text-sm font-bold text-green-600">
-                                    KES {{ number_format($employee['total_due'], 2) }}
+                                    {{ currency_format($employee['total_due']) }}
                                 </td>
                             </tr>
                         @endforeach
@@ -194,22 +194,22 @@
                         <tr class="font-semibold">
                             <td colspan="2" class="px-6 py-4 text-sm text-gray-900">Totals:</td>
                             <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                                KES {{ number_format($summary['totals']['monthly_salary'], 2) }}
+                                {{ currency_format($summary['totals']['monthly_salary']) }}
                             </td>
                             <td class="px-6 py-4"></td>
                             <td class="px-6 py-4"></td>
                             <td class="whitespace-nowrap px-6 py-4 text-sm text-red-600">
-                                -KES {{ number_format($summary['totals']['absent_days_deduction'], 2) }}
+                                {{ currency_format(-$summary['totals']['absent_days_deduction']) }}
                             </td>
                             <td class="whitespace-nowrap px-6 py-4 text-sm font-bold text-blue-600">
-                                KES {{ number_format($summary['totals']['base_salary_payable'], 2) }}
+                                {{ currency_format($summary['totals']['base_salary_payable']) }}
                             </td>
                             <td class="whitespace-nowrap px-6 py-4 text-sm text-orange-600">
-                                +KES {{ number_format($summary['totals']['previous_debt'], 2) }}
+                                +{{ currency_format($summary['totals']['previous_debt']) }}
                             </td>
                             <td class="px-6 py-4"></td>
                             <td class="whitespace-nowrap px-6 py-4 text-sm font-bold text-green-600">
-                                KES {{ number_format($summary['totals']['total_due'], 2) }}
+                                {{ currency_format($summary['totals']['total_due']) }}
                             </td>
                         </tr>
                     </tfoot>

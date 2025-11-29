@@ -34,7 +34,7 @@
                     <div class="flex items-center justify-between">
                         <div>
                         <p class="text-sm font-medium text-gray-600">Total Employees</p>
-                        <p class="mt-2 text-3xl font-bold text-gray-900">{{ $employees->total() }}</p>
+                        <p class="mt-2 text-xl font-bold text-gray-900">{{ $employees->total() }}</p>
                         </div>
                     <div class="rounded-full bg-indigo-100 p-3">
                         <svg class="h-6 w-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -48,7 +48,7 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm font-medium text-gray-600">Total Monthly Payroll</p>
-                        <p class="mt-2 text-3xl font-bold text-blue-900">KES {{ number_format($employees->sum('monthly_salary'), 2) }}</p>
+                        <p class="mt-2 text-xl font-bold text-blue-900">{{ currency_format($employees->sum('monthly_salary')) }}</p>
                         </div>
                     <div class="rounded-full bg-blue-100 p-3">
                         <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -62,8 +62,8 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm font-medium text-gray-600">Average Salary</p>
-                            <p class="mt-2 text-3xl font-bold text-green-900">
-                                KES {{ $employees->count() > 0 ? number_format($employees->avg('monthly_salary'), 2) : '0.00' }}
+                            <p class="mt-2 text-xl font-bold text-green-900">
+                                {{ $employees->count() > 0 ? currency_format($employees->avg('monthly_salary')) : currency_format(0) }}
                             </p>
                         </div>
                         <div class="p-3 bg-green-100 rounded-full">
@@ -78,8 +78,8 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm font-medium text-gray-600">Avg Daily Rate</p>
-                            <p class="mt-2 text-3xl font-bold text-purple-900">
-                                KES {{ $employees->count() > 0 ? number_format($employees->avg('daily_rate'), 2) : '0.00' }}
+                            <p class="mt-2 text-xl font-bold text-purple-900">
+                                {{ $employees->count() > 0 ? currency_format($employees->avg('daily_rate')) : currency_format(0) }}
                             </p>
                         </div>
                         <div class="p-3 bg-purple-100 rounded-full">
@@ -163,7 +163,7 @@
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         @if($employee->monthly_salary > 0)
                                             <div class="text-sm font-semibold text-gray-900">
-                                                KES {{ number_format($employee->monthly_salary, 2) }}
+                                                {{ currency_format($employee->monthly_salary) }}
                                             </div>
                                         @else
                                             <span class="text-sm text-gray-400 italic">Not set</span>
@@ -172,7 +172,7 @@
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         @if($employee->daily_rate > 0)
                                             <div class="text-sm text-gray-900">
-                                                KES {{ number_format($employee->daily_rate, 2) }}
+                                                {{ currency_format($employee->daily_rate) }}
                                             </div>
                                             <div class="text-xs text-gray-500">Auto-calculated</div>
                                         @else
@@ -210,10 +210,10 @@
                                 <tr class="font-semibold">
                                     <td colspan="4" class="px-6 py-4 text-sm text-gray-900">Totals:</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        KES {{ number_format($employees->sum('monthly_salary'), 2) }}
+                                        {{ currency_format($employees->sum('monthly_salary')) }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        KES {{ number_format($employees->sum('daily_rate'), 2) }}
+                                        {{ currency_format($employees->sum('daily_rate')) }}
                                     </td>
                                     <td colspan="2"></td>
                                 </tr>

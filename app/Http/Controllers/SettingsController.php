@@ -11,9 +11,15 @@ use App\Models\EntityNotificationSetting;
 use App\Models\EntityProfileSetting;
 use App\Models\EntitySecuritySetting;
 use App\Models\Item;
+use App\Models\ItemCategory;
+use App\Models\Vendor;
 use App\Models\User;
+use App\Support\Currency;
+use App\Support\Localization;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Spatie\Permission\Models\Role;
 
 class SettingsController extends Controller
 {
@@ -25,9 +31,9 @@ class SettingsController extends Controller
             ['entity_id' => $entity->id],
             [
                 'timezone' => $entity->timezone ?: 'America/Los_Angeles',
-                'currency' => $entity->currency ?: 'USD',
+                'currency' => $entity->currency ?: Currency::defaultCode(),
                 'date_format' => 'm/d/Y',
-                'language' => 'en',
+                'language' => Localization::default(),
             ]
         );
 
@@ -70,12 +76,33 @@ class SettingsController extends Controller
         );
 
         $items = Item::orderBy('name')->get();
+        $vendors = Vendor::orderBy('name')->get();
+        $categories = ItemCategory::orderBy('name')->get();
+
+        $editingItem = null;
+        if ($request->filled('edit_item')) {
+            $editingItem = $items->firstWhere('id', (int) $request->query('edit_item'));
+        }
+
         $users = User::query()
             ->when($entity->exists, fn ($query) => $query->where('entity_id', $entity->id))
-            ->with('roles')
+            ->with(['roles', 'entity'])
+            ->orderBy('name')
             ->get();
 
+        $roles = Role::orderBy('name')->get();
+
         $activeTab = session('activeTab', $request->query('tab', 'general'));
+
+        $unitOptions = [
+            'piece',
+            'kg',
+            'liters',
+            'pack',
+            'box',
+            'tray',
+            'crate',
+        ];
 
         return view('settings.index', [
             'entity' => $entity,
@@ -85,8 +112,15 @@ class SettingsController extends Controller
             'integrationSettings' => $integrations,
             'securitySettings' => $security,
             'items' => $items,
+            'itemCategories' => $categories,
+            'vendors' => $vendors,
             'users' => $users,
+            'roles' => $roles,
             'activeTab' => $activeTab,
+            'editingItem' => $editingItem,
+            'supportedCurrencies' => Currency::all(),
+            'supportedLocales' => Localization::all(),
+            'unitOptions' => $unitOptions,
         ]);
     }
 
@@ -109,7 +143,7 @@ class SettingsController extends Controller
         return redirect()
             ->route('settings')
             ->with('activeTab', $tab)
-            ->with('success', 'Settings updated successfully.');
+            ->with('success', __('settings.updated_success'));
     }
 
     protected function resolveEntity(User $user): Entity
@@ -125,7 +159,7 @@ class SettingsController extends Controller
             [
                 'name' => config('app.name', 'RMS Default'),
                 'timezone' => config('app.timezone', 'America/Los_Angeles'),
-                'currency' => 'USD',
+                'currency' => Currency::defaultCode(),
             ]
         );
 
@@ -141,9 +175,9 @@ class SettingsController extends Controller
     {
         $data = $request->validate([
             'timezone' => ['required', 'string', 'max:255'],
-            'currency' => ['required', 'string', 'max:10'],
+            'currency' => ['required', 'string', 'max:10', Rule::in(array_keys(Currency::all()))],
             'date_format' => ['required', 'string', 'max:20'],
-            'language' => ['required', 'string', 'max:5'],
+            'language' => ['required', 'string', 'max:5', Rule::in(Localization::codes())],
         ]);
 
         EntityGeneralSetting::updateOrCreate(

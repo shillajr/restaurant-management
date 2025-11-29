@@ -86,7 +86,7 @@
                                     <p class="text-xs text-gray-500">Base salary for the month</p>
                                 </div>
                                 <p class="text-lg font-semibold text-gray-900">
-                                    KES {{ number_format($payroll->monthly_salary, 2) }}
+                                    {{ currency_format($payroll->monthly_salary) }}
                                 </p>
                             </div>
 
@@ -94,11 +94,11 @@
                                 <div>
                                     <p class="text-sm font-medium text-gray-900">Absent Days Deduction</p>
                                     <p class="text-xs text-gray-500">
-                                        {{ $payroll->total_absent_days }} days × KES {{ number_format($payroll->monthly_salary / 30, 2) }} (daily rate)
+                                        {{ $payroll->total_absent_days }} days × {{ currency_format($payroll->monthly_salary / 30) }} (daily rate)
                                     </p>
                                 </div>
                                 <p class="text-lg font-semibold text-red-600">
-                                    -KES {{ number_format($payroll->absent_days_deduction, 2) }}
+                                    {{ currency_format(-$payroll->absent_days_deduction) }}
                                 </p>
                             </div>
 
@@ -108,7 +108,7 @@
                                     <p class="text-xs text-blue-700">Monthly salary - Absent days deduction</p>
                                 </div>
                                 <p class="text-lg font-bold text-blue-900">
-                                    KES {{ number_format($payroll->base_salary_payable, 2) }}
+                                    {{ currency_format($payroll->base_salary_payable) }}
                                 </p>
                             </div>
 
@@ -119,7 +119,7 @@
                                         <p class="text-xs text-gray-500">Repayment from active loans</p>
                                     </div>
                                     <p class="text-lg font-semibold text-orange-600">
-                                        -KES {{ number_format($payroll->loan_deductions, 2) }}
+                                        {{ currency_format(-$payroll->loan_deductions) }}
                                     </p>
                                 </div>
                             @endif
@@ -131,7 +131,7 @@
                                         <p class="text-xs text-gray-500">Outstanding balance from previous months</p>
                                     </div>
                                     <p class="text-lg font-semibold text-red-600">
-                                        +KES {{ number_format($payroll->previous_debt, 2) }}
+                                        +{{ currency_format($payroll->previous_debt) }}
                                     </p>
                                 </div>
                             @endif
@@ -142,7 +142,7 @@
                                     <p class="text-xs text-indigo-700">Amount to be paid this cycle</p>
                                 </div>
                                 <p class="text-2xl font-bold text-indigo-900">
-                                    KES {{ number_format($payroll->total_due, 2) }}
+                                    {{ currency_format($payroll->total_due) }}
                                 </p>
                             </div>
 
@@ -152,7 +152,7 @@
                                     <p class="text-xs text-gray-500">Sum of all payments made</p>
                                 </div>
                                 <p class="text-lg font-semibold text-green-600">
-                                    KES {{ number_format($payroll->total_paid, 2) }}
+                                    {{ currency_format($payroll->total_paid) }}
                                 </p>
                             </div>
 
@@ -166,7 +166,7 @@
                                     </p>
                                 </div>
                                 <p class="text-2xl font-bold {{ $payroll->outstanding_balance > 0 ? 'text-red-900' : 'text-green-900' }}">
-                                    KES {{ number_format($payroll->outstanding_balance, 2) }}
+                                    {{ currency_format($payroll->outstanding_balance) }}
                                 </p>
                             </div>
                         </div>
@@ -204,7 +204,7 @@
                                                 {{ \Carbon\Carbon::parse($payment->payment_date)->format('d M Y') }}
                                             </td>
                                             <td class="whitespace-nowrap px-6 py-4 text-sm font-semibold text-green-600">
-                                                KES {{ number_format($payment->amount, 2) }}
+                                                {{ currency_format($payment->amount) }}
                                             </td>
                                             <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
                                                 {{ $payment->payment_method ?? 'N/A' }}
@@ -229,7 +229,7 @@
                                     <tr>
                                         <td colspan="2" class="px-6 py-4 text-sm font-semibold text-gray-900">Total Payments:</td>
                                         <td class="px-6 py-4 text-sm font-bold text-green-600">
-                                            KES {{ number_format($payroll->payments->sum('amount'), 2) }}
+                                            {{ currency_format($payroll->payments->sum('amount')) }}
                                         </td>
                                         <td colspan="4"></td>
                                     </tr>
@@ -286,15 +286,15 @@
                                         <dl class="mt-4 grid grid-cols-2 gap-3 text-sm">
                                             <div>
                                                 <dt class="text-gray-500">Principal</dt>
-                                                <dd class="font-semibold text-gray-900">KES {{ number_format($loan->principal_amount, 2) }}</dd>
+                                                <dd class="font-semibold text-gray-900">{{ currency_format($loan->principal_amount) }}</dd>
                                             </div>
                                             <div>
                                                 <dt class="text-gray-500">Balance</dt>
-                                                <dd class="font-semibold text-gray-900">KES {{ number_format($loan->balance, 2) }}</dd>
+                                                <dd class="font-semibold text-gray-900">{{ currency_format($loan->balance) }}</dd>
                                             </div>
                                             <div>
                                                 <dt class="text-gray-500">Monthly Deduction</dt>
-                                                <dd class="font-semibold text-gray-900">KES {{ number_format($loan->monthly_deduction, 2) }}</dd>
+                                                <dd class="font-semibold text-gray-900">{{ currency_format($loan->monthly_deduction) }}</dd>
                                             </div>
                                             <div>
                                                 <dt class="text-gray-500">Installments Paid</dt>
@@ -322,11 +322,11 @@
                             </div>
                             <div class="flex justify-between">
                                 <dt class="text-gray-500">Bonuses</dt>
-                                <dd class="font-semibold text-gray-900">KES {{ number_format($payroll->bonuses, 2) }}</dd>
+                                <dd class="font-semibold text-gray-900">{{ currency_format($payroll->bonuses) }}</dd>
                             </div>
                             <div class="flex justify-between">
                                 <dt class="text-gray-500">Deductions</dt>
-                                <dd class="font-semibold text-gray-900">KES {{ number_format($payroll->deductions, 2) }}</dd>
+                                <dd class="font-semibold text-gray-900">{{ currency_format($payroll->deductions) }}</dd>
                             </div>
                             <div class="flex justify-between">
                                 <dt class="text-gray-500">Generated By</dt>

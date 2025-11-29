@@ -116,7 +116,7 @@
                                     </div>
                                     <div class="text-right">
                                         <p class="text-xs text-gray-500 uppercase print-hide">Vendor Subtotal</p>
-                                        <p class="text-lg font-bold text-indigo-900">TZS {{ number_format($vendorGroup['vendor_subtotal'], 2) }}</p>
+                                        <p class="text-lg font-bold text-indigo-900">{{ currency_format($vendorGroup['vendor_subtotal']) }}</p>
                                     </div>
                                 </div>
                             </div>
@@ -142,13 +142,13 @@
                                             <td class="px-4 py-3 text-sm text-gray-900">{{ $item['quantity'] }}</td>
                                             <td class="px-4 py-3 text-sm text-gray-900">{{ $item['unit'] ?? 'N/A' }}</td>
                                             <td class="px-4 py-3 text-sm text-gray-900">
-                                                TZS {{ number_format($item['price'] ?? 0, 2) }}
+                                                {{ currency_format($item['price'] ?? 0) }}
                                                 @if(isset($item['originalPrice']) && $item['price'] != $item['originalPrice'])
-                                                    <span class="ml-1 text-xs text-yellow-600 print-hide" title="Original: TZS {{ number_format($item['originalPrice'], 2) }}">⚠</span>
+                                                    <span class="ml-1 text-xs text-yellow-600 print-hide" title="Original: {{ currency_format($item['originalPrice']) }}">⚠</span>
                                                 @endif
                                             </td>
                                             <td class="px-4 py-3 text-sm font-semibold text-gray-900">
-                                                TZS {{ number_format(($item['price'] ?? 0) * $item['quantity'], 2) }}
+                                                {{ currency_format(($item['price'] ?? 0) * $item['quantity']) }}
                                             </td>
                                         </tr>
                                         @endforeach
@@ -159,7 +159,7 @@
                                                 Vendor Total:
                                             </td>
                                             <td class="px-4 py-3 text-sm font-bold text-indigo-900">
-                                                TZS {{ number_format($vendorGroup['vendor_subtotal'], 2) }}
+                                                {{ currency_format($vendorGroup['vendor_subtotal']) }}
                                             </td>
                                         </tr>
                                     </tfoot>
@@ -194,23 +194,23 @@
                     <div class="mt-6 pt-6 border-t border-indigo-400">
                         <div class="flex justify-between items-center mb-2">
                             <span class="text-indigo-100">Subtotal:</span>
-                            <span class="text-xl font-semibold">TZS {{ number_format($purchaseOrder->subtotal, 2) }}</span>
+                            <span class="text-xl font-semibold">{{ currency_format($purchaseOrder->subtotal) }}</span>
                         </div>
                         @if($purchaseOrder->tax > 0)
                         <div class="flex justify-between items-center mb-2">
                             <span class="text-indigo-100">Tax:</span>
-                            <span class="text-xl font-semibold">TZS {{ number_format($purchaseOrder->tax, 2) }}</span>
+                            <span class="text-xl font-semibold">{{ currency_format($purchaseOrder->tax) }}</span>
                         </div>
                         @endif
                         @if($purchaseOrder->other_charges > 0)
                         <div class="flex justify-between items-center mb-2">
                             <span class="text-indigo-100">Other Charges:</span>
-                            <span class="text-xl font-semibold">TZS {{ number_format($purchaseOrder->other_charges, 2) }}</span>
+                            <span class="text-xl font-semibold">{{ currency_format($purchaseOrder->other_charges) }}</span>
                         </div>
                         @endif
                         <div class="flex justify-between items-center pt-4 mt-4 border-t border-indigo-400">
                             <span class="text-xl font-bold">Grand Total:</span>
-                            <span class="text-3xl font-bold">TZS {{ number_format($purchaseOrder->grand_total, 2) }}</span>
+                            <span class="text-3xl font-bold">{{ currency_format($purchaseOrder->grand_total) }}</span>
                         </div>
                     </div>
                 </div>
@@ -273,7 +273,7 @@
                                 <p class="text-xs text-gray-500">{{ $vendorGroup['item_count'] }} items</p>
                             </div>
                             <div class="text-right">
-                                <p class="text-sm font-semibold text-gray-900">TZS {{ number_format($vendorGroup['vendor_subtotal'], 2) }}</p>
+                                <p class="text-sm font-semibold text-gray-900">{{ currency_format($vendorGroup['vendor_subtotal']) }}</p>
                                 <p class="text-xs text-gray-500">
                                     {{ number_format(($vendorGroup['vendor_subtotal'] / $purchaseOrder->subtotal) * 100, 1) }}%
                                 </p>

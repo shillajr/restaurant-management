@@ -107,13 +107,13 @@
                                     @endif
                                     @if(isset($item['price']))
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        TZS {{ number_format($item['price'], 2) }}
+                                        {{ currency_format($item['price']) }}
                                         @if(isset($item['originalPrice']) && $item['price'] != $item['originalPrice'])
-                                            <span class="ml-1 text-xs text-yellow-600" title="Original: TZS {{ number_format($item['originalPrice'], 2) }}">⚠</span>
+                                            <span class="ml-1 text-xs text-yellow-600" title="Original: {{ currency_format($item['originalPrice']) }}">⚠</span>
                                         @endif
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                        TZS {{ number_format($item['price'] * $item['quantity'], 2) }}
+                                        {{ currency_format($item['price'] * $item['quantity']) }}
                                     </td>
                                     @endif
                                 </tr>
@@ -131,7 +131,7 @@
                                                 return ($item['price'] ?? 0) * ($item['quantity'] ?? 0);
                                             });
                                         @endphp
-                                        TZS {{ number_format($grandTotal, 2) }}
+                                        {{ currency_format($grandTotal) }}
                                     </td>
                                 </tr>
                             </tfoot>
@@ -158,7 +158,7 @@
                         @if(isset($grandTotal))
                         <div class="flex justify-between border-t pt-3">
                             <span class="text-sm font-semibold text-gray-900">Total Cost:</span>
-                            <span class="text-sm font-bold text-gray-900">TZS {{ number_format($grandTotal, 2) }}</span>
+                            <span class="text-sm font-bold text-gray-900">{{ currency_format($grandTotal) }}</span>
                         </div>
                         @endif
                     </div>

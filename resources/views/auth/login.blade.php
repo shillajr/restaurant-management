@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Login - Restaurant Management</title>
+    @php($login = __('auth.login'))
+    <title>{{ $login['page_title'] }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100">
@@ -12,10 +13,10 @@
         <div class="max-w-md w-full space-y-8">
             <div>
                 <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
-                    Restaurant Management System
+                    {{ $login['heading'] }}
                 </h2>
                 <p class="mt-2 text-center text-sm text-gray-600">
-                    Sign in to your account
+                    {{ $login['subheading'] }}
                 </p>
             </div>
             
@@ -42,7 +43,7 @@
 
                     <div>
                         <label for="email" class="block text-sm font-medium text-gray-700">
-                            Email address
+                            {{ $login['email_label'] }}
                         </label>
                         <div class="mt-1">
                             <input id="email" name="email" type="email" autocomplete="email" required 
@@ -53,7 +54,7 @@
 
                     <div>
                         <label for="password" class="block text-sm font-medium text-gray-700">
-                            Password
+                            {{ $login['password_label'] }}
                         </label>
                         <div class="mt-1">
                             <input id="password" name="password" type="password" autocomplete="current-password" required
@@ -66,7 +67,7 @@
                             <input id="remember" name="remember" type="checkbox" 
                                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
                             <label for="remember" class="ml-2 block text-sm text-gray-900">
-                                Remember me
+                                {{ $login['remember_me'] }}
                             </label>
                         </div>
                     </div>
@@ -74,7 +75,7 @@
                     <div>
                         <button type="submit"
                                 class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                            Sign in
+                            {{ $login['submit'] }}
                         </button>
                     </div>
                 </form>
@@ -85,22 +86,25 @@
                             <div class="w-full border-t border-gray-300"></div>
                         </div>
                         <div class="relative flex justify-center text-sm">
-                            <span class="px-2 bg-white text-gray-500">Test Credentials</span>
+                            <span class="px-2 bg-white text-gray-500">{{ $login['test_credentials']['heading'] }}</span>
                         </div>
                     </div>
 
                     <div class="mt-4 space-y-2 text-xs">
                         <div class="bg-gray-50 rounded p-3">
-                            <p class="font-semibold text-gray-700 mb-2">Available Test Accounts:</p>
+                            <p class="font-semibold text-gray-700 mb-2">{{ $login['test_credentials']['description'] }}</p>
                             <div class="grid grid-cols-2 gap-2 text-gray-600">
-                                <div><strong>Admin:</strong> admin@restaurant.com</div>
-                                <div><strong>Manager:</strong> manager@restaurant.com</div>
-                                <div><strong>Chef:</strong> chef@restaurant.com</div>
-                                <div><strong>Purchaser:</strong> purchaser@restaurant.com</div>
-                                <div><strong>Finance:</strong> finance@restaurant.com</div>
-                                <div><strong>Auditor:</strong> auditor@restaurant.com</div>
+                                @foreach (($testAccounts ?? []) as $role => $email)
+                                    <div>
+                                        <strong>{{ $login['test_credentials']['roles'][$role] ?? ucfirst($role) }}:</strong>
+                                        {{ $email }}
+                                    </div>
+                                @endforeach
                             </div>
-                            <p class="mt-2 text-gray-500 italic">All passwords: <strong>password</strong></p>
+                            <p class="mt-2 text-gray-500 italic">
+                                {{ $login['test_credentials']['password_hint'] }}:
+                                <strong>{{ $login['test_credentials']['password_value'] }}</strong>
+                            </p>
                         </div>
                     </div>
                 </div>

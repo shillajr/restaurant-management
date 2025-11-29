@@ -1,13 +1,18 @@
 @extends('layouts.app')
 
-@section('title', 'Create Chef Requisition')
+@php
+    $requisition = __('requisitions.create');
+    $common = __('common');
+@endphp
+
+@section('title', $requisition['title'])
 
 @section('content')
 <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-10">
             <!-- Header -->
             <div class="mb-8">
-                <h1 class="text-3xl font-bold text-gray-900">Create Chef Requisition</h1>
-                <p class="mt-2 text-sm text-gray-600">Submit your ingredient and supply requests</p>
+                <h1 class="text-3xl font-bold text-gray-900">{{ $requisition['title'] }}</h1>
+                <p class="mt-2 text-sm text-gray-600">{{ $requisition['description'] }}</p>
             </div>
 
             <!-- Form -->
@@ -28,7 +33,7 @@
                                     </svg>
                                 </div>
                                 <div class="ml-3">
-                                    <h3 class="text-sm font-medium text-red-800">There were errors with your submission</h3>
+                                    <h3 class="text-sm font-medium text-red-800">{{ $common['messages']['validation_errors'] }}</h3>
                                     <ul class="mt-2 text-sm text-red-700 list-disc list-inside">
                                         @foreach ($errors->all() as $error)
                                             <li>{{ $error }}</li>
@@ -42,7 +47,7 @@
                     <!-- Requested For Date -->
                     <div>
                         <label for="requested_for_date" class="block text-sm font-medium text-gray-700 mb-2">
-                            Requested For Date <span class="text-red-500">*</span>
+                            {{ $requisition['requested_for_date'] }} <span class="text-red-500">*</span>
                         </label>
                         <input type="date" 
                                id="requested_for_date" 
@@ -57,9 +62,9 @@
                     <div>
                         <div class="flex items-center justify-between mb-4">
                             <label class="block text-sm font-medium text-gray-700">
-                                Items <span class="text-red-500">*</span>
+                                {{ $requisition['items_section']['heading'] }} <span class="text-red-500">*</span>
                             </label>
-                            <span class="text-xs text-gray-500">At least one item required</span>
+                            <span class="text-xs text-gray-500">{{ $requisition['items_section']['instructions'] }}</span>
                         </div>
 
                         <!-- Items Table -->
@@ -67,13 +72,13 @@
                             <table class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-50">
                                     <tr>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">Item</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">Vendor</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">Price (TZS)</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">Quantity</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">UoM</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">Line Total</th>
-                                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-16">Action</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">{{ $requisition['items_section']['table']['item'] }}</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">{{ $requisition['items_section']['table']['vendor'] }}</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">{{ str_replace(':currency', currency_label(), $requisition['items_section']['table']['price']) }}</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">{{ $requisition['items_section']['table']['quantity'] }}</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">{{ $requisition['items_section']['table']['unit'] }}</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">{{ $requisition['items_section']['table']['line_total'] }}</th>
+                                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-16">{{ $requisition['items_section']['table']['action'] }}</th>
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white divide-y divide-gray-200">
@@ -86,7 +91,7 @@
                                                         @change="selectItem(index)"
                                                         required
                                                         class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm">
-                                                    <option value="">Select item...</option>
+                                                    <option value="">{{ $requisition['items_section']['table']['select_placeholder'] }}</option>
                                                     <template x-for="category in Object.keys(groupedItems)" :key="category">
                                                         <optgroup :label="category">
                                                             <template x-for="item in groupedItems[category]" :key="item.id">
@@ -99,7 +104,7 @@
                                                     <svg class="h-3 w-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                                         <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
                                                     </svg>
-                                                    Price modified
+                                                    {{ $common['messages']['price_modified'] }}
                                                 </span>
                                             </td>
 
@@ -134,7 +139,7 @@
                                                 <input type="hidden" :name="'items[' + index + '][price_edited]'" :value="row.priceEdited ? '1' : '0'">
                                                 <span x-show="row.defaultPrice && row.price != row.defaultPrice" 
                                                       class="text-xs text-gray-500 mt-1 block">
-                                                    Was: <span x-text="formatCurrency(row.defaultPrice)"></span>
+                                                    {{ $requisition['summary']['was'] }} <span x-text="formatCurrency(row.defaultPrice)"></span>
                                                 </span>
                                             </td>
 
@@ -171,7 +176,7 @@
                                                         @click="removeItem(index)"
                                                         x-show="items.length > 1"
                                                         class="p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                                                        title="Remove item">
+                                                        title="{{ $requisition['items_section']['remove_tooltip'] }}">
                                                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                                     </svg>
@@ -191,27 +196,27 @@
                                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                                 </svg>
-                                Add Another Item
+                                {{ $requisition['items_section']['add_button'] }}
                             </button>
                         </div>
                     </div>
 
                     <!-- Summary Panel -->
                     <div class="bg-gray-50 border border-gray-200 rounded-lg p-6">
-                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Requisition Summary</h3>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ $requisition['summary']['heading'] }}</h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <!-- Left Column -->
                             <div class="space-y-3">
                                 <div class="flex justify-between items-center py-2 border-b border-gray-200">
-                                    <span class="text-sm text-gray-600">Total Items:</span>
+                                    <span class="text-sm text-gray-600">{{ $requisition['summary']['total_items'] }}</span>
                                     <span class="text-sm font-semibold text-gray-900" x-text="items.length"></span>
                                 </div>
                                 <div class="flex justify-between items-center py-2 border-b border-gray-200">
-                                    <span class="text-sm text-gray-600">Total Quantity:</span>
+                                    <span class="text-sm text-gray-600">{{ $requisition['summary']['total_quantity'] }}</span>
                                     <span class="text-sm font-semibold text-gray-900" x-text="totalQuantity.toFixed(2)"></span>
                                 </div>
                                 <div class="flex justify-between items-center py-2">
-                                    <span class="text-sm text-gray-600">Modified Prices:</span>
+                                    <span class="text-sm text-gray-600">{{ $requisition['summary']['modified_prices'] }}</span>
                                     <span class="text-sm font-semibold" 
                                           :class="modifiedPricesCount > 0 ? 'text-yellow-600' : 'text-gray-900'" 
                                           x-text="modifiedPricesCount"></span>
@@ -221,15 +226,15 @@
                             <!-- Right Column -->
                             <div class="space-y-3">
                                 <div class="flex justify-between items-center py-2 border-b border-gray-200">
-                                    <span class="text-sm text-gray-600">Subtotal:</span>
+                                    <span class="text-sm text-gray-600">{{ $requisition['summary']['subtotal'] }}</span>
                                     <span class="text-sm font-semibold text-gray-900" x-text="formatCurrency(subtotal)"></span>
                                 </div>
                                 <div class="flex justify-between items-center py-2 border-b border-gray-200">
-                                    <span class="text-sm text-gray-600">Tax/Charges:</span>
-                                    <span class="text-sm font-semibold text-gray-900">TZS 0.00</span>
+                                    <span class="text-sm text-gray-600">{{ $requisition['summary']['taxes'] }}</span>
+                                    <span class="text-sm font-semibold text-gray-900" x-text="formatCurrency(0)"></span>
                                 </div>
                                 <div class="flex justify-between items-center py-3 bg-indigo-50 rounded-lg px-4 -mx-4">
-                                    <span class="text-base font-bold text-gray-900">Grand Total:</span>
+                                    <span class="text-base font-bold text-gray-900">{{ $requisition['summary']['grand_total'] }}</span>
                                     <span class="text-lg font-bold text-indigo-600" x-text="formatCurrency(grandTotal)"></span>
                                 </div>
                             </div>
@@ -241,7 +246,7 @@
                                 <svg class="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
                                 </svg>
-                                Price Changes Detected
+                                {{ $common['messages']['price_changes_detected'] }}
                             </h4>
                             <div class="bg-yellow-50 rounded-md p-3 space-y-1">
                                 <template x-for="(row, index) in items" :key="index">
@@ -258,12 +263,12 @@
                     <!-- Note -->
                     <div>
                         <label for="note" class="block text-sm font-medium text-gray-700 mb-2">
-                            Additional Notes
+                            {{ $requisition['notes']['label'] }}
                         </label>
                         <textarea id="note" 
                                   name="note"
                                   rows="4"
-                                  placeholder="Add any special instructions, quality requirements, or delivery instructions..."
+                                  placeholder="{{ $requisition['notes']['placeholder'] }}"
                                   class="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">{{ old('note') }}</textarea>
                     </div>
 
@@ -271,7 +276,7 @@
                     <div class="flex items-center justify-end gap-4 pt-6 border-t border-gray-200">
                         <a href="{{ route('chef-requisitions.index') }}" 
                            class="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors">
-                            Cancel
+                            {{ $requisition['actions']['cancel'] }}
                         </a>
                         <button type="submit"
                                 :disabled="items.length === 0 || !isFormValid()"
@@ -279,7 +284,7 @@
                             <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                             </svg>
-                            Submit Requisition
+                            {{ $requisition['actions']['submit'] }}
                         </button>
                     </div>
                 </form>
@@ -294,13 +299,11 @@
                         </svg>
                     </div>
                     <div class="ml-3">
-                        <h3 class="text-sm font-medium text-blue-800">Tips for submitting requisitions</h3>
+                        <h3 class="text-sm font-medium text-blue-800">{{ $requisition['tips']['heading'] }}</h3>
                         <ul class="mt-2 text-sm text-blue-700 list-disc list-inside space-y-1">
-                            <li>Select items from the registered Item Master</li>
-                            <li>Vendor and default price are automatically populated</li>
-                            <li>You can edit prices if needed - changes will be tracked</li>
-                            <li>Request items at least 2 days in advance</li>
-                            <li>Review the summary before submitting</li>
+                            @foreach ($requisition['tips']['list'] as $tip)
+                                <li>{{ $tip }}</li>
+                            @endforeach
                         </ul>
                     </div>
                 </div>
@@ -338,6 +341,7 @@
                 items: [
                     { item_id: '', vendor: '', price: 0, defaultPrice: 0, quantity: 0, uom: '', lineTotal: 0, priceEdited: false, originalPrice: 0 }
                 ],
+                currencyMeta: window.appCurrency || { code: 'USD', symbol: '$', precision: 2 },
                 
                 get groupedItems() {
                     const grouped = {};
@@ -419,7 +423,14 @@
                 },
                 
                 formatCurrency(amount) {
-                    return 'TZS ' + (amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    const currency = this.currencyMeta;
+                    const precision = Number.isInteger(currency.precision) ? currency.precision : 2;
+                    const numericAmount = parseFloat(amount ?? 0) || 0;
+
+                    return `${currency.code} ${numericAmount.toLocaleString('en-US', {
+                        minimumFractionDigits: precision,
+                        maximumFractionDigits: precision,
+                    })}`;
                 },
                 
                 getItemName(itemId) {

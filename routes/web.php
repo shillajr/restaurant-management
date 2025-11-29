@@ -1,13 +1,16 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\ItemCategoryController;
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\EmployeeSalaryController;
 use App\Http\Controllers\EmployeeLoanController;
+use App\Http\Controllers\VendorController;
 
 Route::get('/', function () {
     return redirect('/dashboard');
@@ -80,6 +83,11 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/loans', [EmployeeLoanController::class, 'store'])->name('loans.store');
         Route::get('/loans/{loan}', [EmployeeLoanController::class, 'show'])->name('loans.show');
         Route::post('/loans/{loan}/cancel', [EmployeeLoanController::class, 'cancel'])->name('loans.cancel');
+
+        // Admin user management routes
+        Route::post('/users/invite', [AdminUserController::class, 'invite'])->name('admin.users.invite');
+        Route::put('/users/{user}/roles', [AdminUserController::class, 'updateRoles'])->name('admin.users.roles.update');
+        Route::post('/users/{user}/resend-invite', [AdminUserController::class, 'resendInvite'])->name('admin.users.resend-invite');
     });
     
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
@@ -90,6 +98,10 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/items', [ItemController::class, 'store'])->name('items.store');
     Route::put('/items/{id}', [ItemController::class, 'update'])->name('items.update');
     Route::delete('/items/{id}', [ItemController::class, 'destroy'])->name('items.destroy');
+
+    // Category and vendor management
+    Route::post('/item-categories', [ItemCategoryController::class, 'store'])->name('item-categories.store');
+    Route::post('/vendors', [VendorController::class, 'store'])->name('vendors.store');
     
     // API endpoints for items
     Route::get('/api/items/active', [ItemController::class, 'getActiveItems'])->name('api.items.active');

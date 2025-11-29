@@ -40,24 +40,31 @@ class PaymentMadeNotification extends Notification implements ShouldQueue
     {
         $payroll = $this->payment->payroll;
         $monthName = Carbon::parse($payroll->month)->format('F Y');
+        $amountPaid = 'KES ' . number_format($this->payment->amount, 2);
+        $paymentDate = Carbon::parse($this->payment->payment_date)->format('d M Y');
+        $paymentMethod = $this->payment->payment_method ?? __('mail.payment_made.method_na');
+        $paymentReference = $this->payment->payment_reference ?? __('mail.payment_made.reference_na');
+        $totalDue = 'KES ' . number_format($payroll->total_due, 2);
+        $totalPaid = 'KES ' . number_format($payroll->total_paid, 2);
+        $outstandingBalance = 'KES ' . number_format($payroll->outstanding_balance, 2);
 
         return (new MailMessage)
-                    ->subject('Salary Payment Received - ' . $monthName)
-                    ->greeting('Hello ' . $notifiable->name . ',')
-                    ->line('A payment has been made to your salary for ' . $monthName . '.')
-                    ->line('**Payment Details:**')
-                    ->line('Amount Paid: KES ' . number_format($this->payment->amount, 2))
-                    ->line('Payment Date: ' . Carbon::parse($this->payment->payment_date)->format('d M Y'))
-                    ->line('Payment Method: ' . ($this->payment->payment_method ?? 'N/A'))
-                    ->line('Payment Reference: ' . ($this->payment->payment_reference ?? 'N/A'))
-                    ->line('')
-                    ->line('**Payroll Summary:**')
-                    ->line('Total Due: KES ' . number_format($payroll->total_due, 2))
-                    ->line('Total Paid: KES ' . number_format($payroll->total_paid, 2))
-                    ->line('Outstanding Balance: KES ' . number_format($payroll->outstanding_balance, 2))
-                    ->line('')
-                    ->line('Thank you for your service!')
-                    ->salutation('Regards, ' . config('app.name'));
+            ->subject(__('mail.payment_made.subject', ['month' => $monthName]))
+            ->greeting(__('mail.payment_made.greeting', ['name' => $notifiable->name]))
+            ->line(__('mail.payment_made.intro', ['month' => $monthName]))
+            ->line(__('mail.payment_made.details_heading'))
+            ->line(__('mail.payment_made.amount', ['amount' => $amountPaid]))
+            ->line(__('mail.payment_made.date', ['date' => $paymentDate]))
+            ->line(__('mail.payment_made.method', ['method' => $paymentMethod]))
+            ->line(__('mail.payment_made.reference', ['reference' => $paymentReference]))
+            ->line('')
+            ->line(__('mail.payment_made.summary_heading'))
+            ->line(__('mail.payment_made.total_due', ['amount' => $totalDue]))
+            ->line(__('mail.payment_made.total_paid', ['amount' => $totalPaid]))
+            ->line(__('mail.payment_made.outstanding_balance', ['amount' => $outstandingBalance]))
+            ->line('')
+            ->line(__('mail.payment_made.thanks'))
+            ->salutation(__('mail.payment_made.salutation', ['app' => config('app.name')]));
     }
 
     /**

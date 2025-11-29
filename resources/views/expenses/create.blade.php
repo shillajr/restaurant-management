@@ -1,20 +1,25 @@
 @extends('layouts.app')
 
-@section('title', 'Add Expense')
+@php
+    $expenseView = __('expenses.create');
+    $common = __('common');
+@endphp
+
+@section('title', $expenseView['title'])
 
 @section('content')
 <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-10" x-data="expenseForm()">
             <!-- Header -->
             <div class="mb-8 flex items-center justify-between">
                 <div>
-                    <h1 class="text-3xl font-bold text-gray-900">Add Expense</h1>
-                    <p class="mt-2 text-sm text-gray-600">Record expense transactions with multiple items</p>
+                    <h1 class="text-3xl font-bold text-gray-900">{{ $expenseView['title'] }}</h1>
+                    <p class="mt-2 text-sm text-gray-600">{{ $expenseView['description'] }}</p>
                 </div>
                 <a href="{{ route('dashboard') }}" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
                     <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
                     </svg>
-                    Back to Dashboard
+                    {{ $expenseView['back_to_dashboard'] }}
                 </a>
             </div>
 
@@ -36,7 +41,7 @@
                                     </svg>
                                 </div>
                                 <div class="ml-3">
-                                    <h3 class="text-sm font-medium text-red-800">There were errors with your submission</h3>
+                                    <h3 class="text-sm font-medium text-red-800">{{ $common['messages']['validation_errors'] }}</h3>
                                     <ul class="mt-2 text-sm text-red-700 list-disc list-inside">
                                         @foreach ($errors->all() as $error)
                                             <li>{{ $error }}</li>
@@ -52,7 +57,7 @@
                         <!-- Expense Date -->
                         <div>
                             <label for="expense_date" class="block text-sm font-medium text-gray-700 mb-2">
-                                Expense Date <span class="text-red-500">*</span>
+                                {{ $expenseView['expense_date'] }} <span class="text-red-500">*</span>
                             </label>
                             <input type="date" 
                                    name="expense_date" 
@@ -70,14 +75,14 @@
                     <!-- Expense Items Section -->
                     <div class="border-t border-gray-200 pt-6">
                         <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-lg font-medium text-gray-900">Expense Items</h3>
+                            <h3 class="text-lg font-medium text-gray-900">{{ $expenseView['items']['heading'] }}</h3>
                             <button type="button" 
                                     @click="addItem"
                                     class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                                 <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                                 </svg>
-                                Add Item
+                                {{ $expenseView['items']['add_button'] }}
                             </button>
                         </div>
 
@@ -87,7 +92,7 @@
                                 <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
                                     <!-- Item Header -->
                                     <div class="flex items-center justify-between mb-4">
-                                        <h4 class="text-sm font-medium text-gray-700" x-text="'Item #' + (index + 1)"></h4>
+                                        <h4 class="text-sm font-medium text-gray-700" x-text="'{{ $expenseView['js']['item_number_prefix'] }}' + (index + 1)"></h4>
                                         <button type="button"
                                                 @click="removeItem(index)"
                                                 class="text-red-600 hover:text-red-900">
@@ -102,7 +107,7 @@
                                         <!-- Item Selection -->
                                         <div>
                                             <label :for="'item_' + index" class="block text-sm font-medium text-gray-700 mb-1">
-                                                Item <span class="text-red-500">*</span>
+                                                {{ $expenseView['items']['labels']['item'] }} <span class="text-red-500">*</span>
                                             </label>
                                             <select x-model="item.item_id" 
                                                     @change="updateItemDetails(index)"
@@ -110,7 +115,7 @@
                                                     :id="'item_' + index"
                                                     class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                                                     required>
-                                                <option value="">Select item</option>
+                                                <option value="">{{ $expenseView['items']['placeholders']['select_item'] }}</option>
                                                 <template x-for="availableItem in availableItems" :key="availableItem.id">
                                                     <option :value="availableItem.id" x-text="availableItem.name"></option>
                                                 </template>
@@ -120,19 +125,19 @@
                                         <!-- Vendor (Auto-filled) -->
                                         <div>
                                             <label class="block text-sm font-medium text-gray-700 mb-1">
-                                                Vendor
+                                                {{ $expenseView['items']['labels']['vendor'] }}
                                             </label>
                                             <input type="text" 
                                                    x-model="item.vendor" 
                                                    readonly
                                                    class="block w-full px-3 py-2 text-sm border border-gray-200 rounded-md bg-white text-gray-600"
-                                                   placeholder="Auto-filled">
+                                                   placeholder="{{ $expenseView['items']['placeholders']['auto_filled'] }}">
                                         </div>
 
                                         <!-- Quantity -->
                                         <div>
                                             <label :for="'quantity_' + index" class="block text-sm font-medium text-gray-700 mb-1">
-                                                Quantity <span class="text-red-500">*</span>
+                                                {{ $expenseView['items']['labels']['quantity'] }} <span class="text-red-500">*</span>
                                             </label>
                                             <input type="number" 
                                                    x-model.number="item.quantity"
@@ -148,11 +153,11 @@
                                         <!-- Unit Price -->
                                         <div>
                                             <label :for="'unit_price_' + index" class="block text-sm font-medium text-gray-700 mb-1">
-                                                Unit Price <span class="text-red-500">*</span>
+                                                {{ $expenseView['items']['labels']['unit_price'] }} <span class="text-red-500">*</span>
                                             </label>
                                             <div class="relative">
-                                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                    <span class="text-gray-500 text-sm">$</span>
+                                                <div class="absolute inset-y-0 left-0 flex items-center pointer-events-none">
+                                                    <span class="inline-flex h-full min-w-[3.5rem] items-center justify-center px-3 text-gray-500 text-xs" x-text="currencyPrefix"></span>
                                                 </div>
                                                 <input type="number" 
                                                        x-model.number="item.unit_price"
@@ -161,7 +166,7 @@
                                                        :id="'unit_price_' + index"
                                                        min="0.01"
                                                        step="0.01"
-                                                       class="block w-full pl-7 pr-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                                                       class="block w-full pl-16 pr-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                                                        required>
                                             </div>
                                         </div>
@@ -170,10 +175,8 @@
                                     <!-- Line Total -->
                                     <div class="mb-4 pb-4 border-b border-gray-200">
                                         <div class="flex justify-between items-center">
-                                            <span class="text-sm font-medium text-gray-700">Line Total:</span>
-                                            <span class="text-lg font-bold text-gray-900">
-                                                $<span x-text="item.line_total.toFixed(2)">0.00</span>
-                                            </span>
+                                            <span class="text-sm font-medium text-gray-700">{{ $expenseView['items']['line_total'] }}</span>
+                                            <span class="text-sm font-semibold text-gray-900" x-text="formatCurrency(item.line_total)"></span>
                                         </div>
                                     </div>
 
@@ -182,40 +185,40 @@
                                         <!-- Payment Reference -->
                                         <div>
                                             <label :for="'invoice_' + index" class="block text-sm font-medium text-gray-700 mb-1">
-                                                Payment Reference
+                                                {{ $expenseView['items']['labels']['payment_reference'] }}
                                             </label>
                                             <input type="text" 
                                                    x-model="item.invoice_number"
                                                    :name="'items[' + index + '][invoice_number]'"
                                                    :id="'invoice_' + index"
                                                    class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                                                   placeholder="REF-001">
+                                                   placeholder="{{ $expenseView['items']['placeholders']['reference'] }}">
                                         </div>
 
                                         <!-- Payment Method -->
                                         <div>
                                             <label :for="'payment_' + index" class="block text-sm font-medium text-gray-700 mb-1">
-                                                Payment Method
+                                                {{ $expenseView['items']['labels']['payment_method'] }}
                                             </label>
                                             <select x-model="item.payment_method"
                                                     :name="'items[' + index + '][payment_method]'"
                                                     :id="'payment_' + index"
                                                     class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
-                                                <option value="">Select method</option>
-                                                <option value="cash">Cash</option>
-                                                <option value="credit_card">Credit Card</option>
-                                                <option value="debit_card">Debit Card</option>
-                                                <option value="bank_transfer">Bank Transfer</option>
-                                                <option value="check">Check</option>
-                                                <option value="mobile_money">Mobile Money</option>
-                                                <option value="other">Other</option>
+                                                <option value="">{{ $expenseView['payment_methods']['placeholder'] }}</option>
+                                                <option value="cash">{{ $expenseView['payment_methods']['cash'] }}</option>
+                                                <option value="credit_card">{{ $expenseView['payment_methods']['credit_card'] }}</option>
+                                                <option value="debit_card">{{ $expenseView['payment_methods']['debit_card'] }}</option>
+                                                <option value="bank_transfer">{{ $expenseView['payment_methods']['bank_transfer'] }}</option>
+                                                <option value="check">{{ $expenseView['payment_methods']['check'] }}</option>
+                                                <option value="mobile_money">{{ $expenseView['payment_methods']['mobile_money'] }}</option>
+                                                <option value="other">{{ $expenseView['payment_methods']['other'] }}</option>
                                             </select>
                                         </div>
 
                                         <!-- Receipt Upload -->
                                         <div>
                                             <label :for="'receipt_' + index" class="block text-sm font-medium text-gray-700 mb-1">
-                                                Receipt/Invoice
+                                                {{ $expenseView['items']['labels']['receipt'] }}
                                             </label>
                                             <div class="relative">
                                                 <input type="file" 
@@ -230,37 +233,35 @@
                                     </div>
 
                                     <!-- Description/Notes -->
-                                    <div class="mt-4">
+                                        <div class="mt-4">
                                         <label :for="'description_' + index" class="block text-sm font-medium text-gray-700 mb-1">
-                                            Additional Details/Notes
+                                            {{ $expenseView['items']['labels']['additional_details'] }}
                                         </label>
                                         <textarea x-model="item.description"
                                                   :name="'items[' + index + '][description]'"
                                                   :id="'description_' + index"
                                                   rows="2"
                                                   class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                                                  placeholder="Add any additional details about this expense item..."></textarea>
+                                                  placeholder="{{ $expenseView['items']['placeholders']['additional_details'] }}"></textarea>
                                     </div>
                                 </div>
                             </template>
 
                             <!-- Empty State -->
-                            <div x-show="items.length === 0" class="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                                <div x-show="items.length === 0" class="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
                                 <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                                 </svg>
-                                <p class="mt-2 text-sm text-gray-500">No items added yet.</p>
-                                <p class="text-xs text-gray-400">Click "Add Item" to start adding expense items.</p>
+                                    <p class="mt-2 text-sm text-gray-500">{{ $expenseView['items']['empty']['title'] }}</p>
+                                    <p class="text-xs text-gray-400">{{ $expenseView['items']['empty']['subtitle'] }}</p>
                             </div>
                         </div>
 
                         <!-- Grand Total -->
                         <div class="mt-6 pt-6 border-t border-gray-300">
                             <div class="flex justify-between items-center">
-                                <span class="text-lg font-medium text-gray-900">Grand Total:</span>
-                                <span class="text-2xl font-bold text-blue-600">
-                                    $<span x-text="grandTotal.toFixed(2)">0.00</span>
-                                </span>
+                                <span class="text-lg font-medium text-gray-900">{{ $expenseView['totals']['grand_total'] }}</span>
+                                <span class="text-lg font-bold text-blue-600" x-text="formatCurrency(grandTotal)"></span>
                             </div>
                         </div>
 
@@ -270,32 +271,32 @@
 
                     <!-- Additional Details -->
                     <div class="border-t border-gray-200 pt-6 space-y-6">
-                        <h3 class="text-lg font-medium text-gray-900">General Notes</h3>
+                        <h3 class="text-lg font-medium text-gray-900">{{ $expenseView['notes']['heading'] }}</h3>
 
                         <!-- General Description -->
                         <div>
                             <label for="description" class="block text-sm font-medium text-gray-700 mb-2">
-                                General Description/Notes
+                                {{ $expenseView['notes']['description_label'] }}
                             </label>
                             <textarea name="description" 
                                       id="description" 
                                       rows="3"
                                       x-model="description"
                                       class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                                      placeholder="Add any general notes about this expense transaction..."></textarea>
+                                      placeholder="{{ $expenseView['notes']['description_placeholder'] }}"></textarea>
                         </div>
                     </div>
 
                     <!-- Form Actions -->
                     <div class="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200">
                         <a href="{{ route('dashboard') }}" class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                            Cancel
+                            {{ $common['actions']['cancel'] }}
                         </a>
                         <button type="submit" 
                                 class="px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                                 :disabled="items.length === 0"
                                 :class="{ 'opacity-50 cursor-not-allowed': items.length === 0 }">
-                            Submit Expense
+                            {{ $expenseView['actions']['submit'] }}
                         </button>
                     </div>
                 </form>
@@ -311,6 +312,7 @@
                 description: '',
                 items: [],
                 availableItems: {!! json_encode(\App\Models\Item::select('id', 'name', 'vendor', 'unit_price')->get()) !!},
+                currencyMeta: window.appCurrency || { code: 'USD', symbol: '$', precision: 2 },
 
                 init() {
                     // Add one item by default
@@ -355,10 +357,25 @@
                     return this.items.reduce((sum, item) => sum + (parseFloat(item.line_total) || 0), 0);
                 },
 
+                get currencyPrefix() {
+                    return this.currencyMeta.code;
+                },
+
+                formatCurrency(value) {
+                    const amount = parseFloat(value ?? 0) || 0;
+                    const precision = Number.isInteger(this.currencyMeta.precision) ? this.currencyMeta.precision : 2;
+                    const formatted = Math.abs(amount).toLocaleString('en-US', {
+                        minimumFractionDigits: precision,
+                        maximumFractionDigits: precision,
+                    });
+                    const sign = amount < 0 ? '-' : '';
+                    return `${sign}${this.currencyMeta.code} ${formatted}`;
+                },
+
                 prepareSubmit(e) {
                     if (this.items.length === 0) {
                         e.preventDefault();
-                        alert('Please add at least one item to the expense.');
+                        alert('{{ $expenseView['js']['items_required'] }}');
                         return false;
                     }
                 }

@@ -68,11 +68,11 @@
                             <div class="grid grid-cols-2 gap-4 text-sm">
                                 <div>
                                     <p class="text-blue-700">Monthly Salary</p>
-                                    <p class="text-lg font-bold text-blue-900">KES <span x-text="formatNumber(selectedEmployee.salary)"></span></p>
+                                    <p class="text-lg font-bold text-blue-900" x-text="formatCurrency(selectedEmployee.salary)"></p>
                                 </div>
                                 <div>
                                     <p class="text-blue-700">Active Loans Balance</p>
-                                    <p class="text-lg font-bold text-blue-900">KES <span x-text="formatNumber(selectedEmployee.activeLoans)"></span></p>
+                                    <p class="text-lg font-bold text-blue-900" x-text="formatCurrency(selectedEmployee.activeLoans)"></p>
                                 </div>
                             </div>
                         </div>
@@ -83,7 +83,7 @@
                             </label>
                             <div class="relative">
                                 <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-sm text-gray-500">
-                                    KES
+                                    {{ currency_label() }}
                                 </div>
                                 <input
                                     type="number"
@@ -111,7 +111,7 @@
                             </label>
                             <div class="relative">
                                 <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-sm text-gray-500">
-                                    KES
+                                    {{ currency_label() }}
                                 </div>
                                 <input
                                     type="number"
@@ -227,11 +227,11 @@
                     <div class="space-y-3">
                         <div class="border-b border-orange-400 pb-3">
                             <p class="text-sm opacity-90">Total Loan Amount</p>
-                            <p class="text-2xl font-bold">KES <span x-text="formatNumber(amount)"></span></p>
+                            <p class="text-2xl font-bold" x-text="formatCurrency(amount)"></p>
                         </div>
                         <div class="border-b border-orange-400 pb-3">
                             <p class="text-sm opacity-90">Monthly Deduction</p>
-                            <p class="text-xl font-bold">KES <span x-text="formatNumber(repaymentPerCycle)"></span></p>
+                            <p class="text-xl font-bold" x-text="formatCurrency(repaymentPerCycle)"></p>
                         </div>
                         <div class="pt-2">
                             <p class="text-sm opacity-90">Estimated Duration</p>
@@ -249,11 +249,11 @@
                         <div class="space-y-3 text-sm">
                             <div class="flex justify-between">
                                 <span class="text-gray-600">Loan Amount:</span>
-                                <span class="font-semibold text-gray-900">KES <span x-text="formatNumber(amount)"></span></span>
+                                <span class="font-semibold text-gray-900" x-text="formatCurrency(amount)"></span>
                             </div>
                             <div class="flex justify-between">
                                 <span class="text-gray-600">Per Month:</span>
-                                <span class="font-semibold text-orange-600">-KES <span x-text="formatNumber(repaymentPerCycle)"></span></span>
+                                <span class="font-semibold text-orange-600" x-text="formatCurrency(-repaymentPerCycle)"></span>
                             </div>
                             <div class="flex justify-between">
                                 <span class="text-gray-600">Duration:</span>
@@ -276,15 +276,15 @@
                     <div class="space-y-3 text-sm text-blue-800">
                         <div class="rounded bg-white p-3">
                             <p class="font-medium text-blue-900">Quick Advance</p>
-                            <p class="mt-1 text-xs">KES 10,000 @ KES 5,000/month = 2 months</p>
+                            <p class="mt-1 text-xs">{{ currency_label() }} 10,000 @ {{ currency_label() }} 5,000/month = 2 months</p>
                         </div>
                         <div class="rounded bg-white p-3">
                             <p class="font-medium text-blue-900">Medium Term</p>
-                            <p class="mt-1 text-xs">KES 30,000 @ KES 5,000/month = 6 months</p>
+                            <p class="mt-1 text-xs">{{ currency_label() }} 30,000 @ {{ currency_label() }} 5,000/month = 6 months</p>
                         </div>
                         <div class="rounded bg-white p-3">
                             <p class="font-medium text-blue-900">Long Term</p>
-                            <p class="mt-1 text-xs">KES 60,000 @ KES 5,000/month = 12 months</p>
+                            <p class="mt-1 text-xs">{{ currency_label() }} 60,000 @ {{ currency_label() }} 5,000/month = 12 months</p>
                         </div>
                     </div>
                 </div>
@@ -322,6 +322,7 @@
             amount: {{ old('amount', 0) }},
             repaymentPerCycle: {{ old('repayment_per_cycle', 0) }},
             estimatedMonths: 0,
+            currencyMeta: window.appCurrency || { code: 'USD', symbol: '$', precision: 2 },
 
             init() {
                 this.updateEmployeeInfo();
@@ -365,6 +366,22 @@
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2
                 });
+            },
+
+            get currencyLabel() {
+                return this.currencyMeta.code;
+            },
+
+            formatCurrency(value) {
+                const amount = parseFloat(value ?? 0) || 0;
+                const precision = Number.isInteger(this.currencyMeta.precision) ? this.currencyMeta.precision : 2;
+                const formatted = Math.abs(amount).toLocaleString('en-US', {
+                    minimumFractionDigits: precision,
+                    maximumFractionDigits: precision,
+                });
+                const sign = amount < 0 ? '-' : '';
+
+                return `${sign}${this.currencyLabel} ${formatted}`;
             }
         }
     }

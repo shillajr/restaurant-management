@@ -167,7 +167,7 @@
                                         return ($item['price'] ?? 0) * ($item['quantity'] ?? 0);
                                     });
                                 @endphp
-                                TZS {{ number_format($total, 2) }}
+                                {{ currency_format($total) }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 @php
