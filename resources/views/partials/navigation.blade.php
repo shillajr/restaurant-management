@@ -13,6 +13,8 @@
                 'active' => ['chef-requisitions.*'],
                 'permission' => 'create requisitions',
             ],
+        ],
+        'finance' => [
             [
                 'label' => __('navigation.links.purchase_orders'),
                 'route' => 'purchase-orders.index',
@@ -21,9 +23,15 @@
             ],
             [
                 'label' => __('navigation.links.expenses'),
-                'route' => 'expenses.create',
+                'route' => 'expenses.index',
                 'active' => ['expenses.*'],
                 'permission' => 'create expenses',
+            ],
+            [
+                'label' => __('navigation.links.financial_ledgers'),
+                'route' => 'financial-ledgers.index',
+                'active' => ['financial-ledgers.*'],
+                'permission' => ['approve purchase orders', 'create purchase orders', 'view financial ledgers'],
             ],
         ],
         'insights' => [
@@ -46,6 +54,33 @@
 
     $peopleRoutes = ['payroll.*', 'loans.*', 'employees.*'];
     $peopleSectionActive = request()->routeIs($peopleRoutes);
+    $user = auth()->user();
+
+    $canAccessNavItem = function (array $item) use ($user): bool {
+        $required = $item['permission'] ?? null;
+
+        if (! $required) {
+            return true;
+        }
+
+        if (! $user) {
+            return false;
+        }
+
+        $permissions = is_array($required) ? $required : [$required];
+
+        foreach ($permissions as $permission) {
+            if ($user->can($permission)) {
+                return true;
+            }
+        }
+
+        return false;
+    };
+
+    $availableGroups = collect($navGroups)->map(function ($items) use ($canAccessNavItem) {
+        return collect($items)->filter(fn ($item) => $canAccessNavItem($item))->values();
+    });
 @endphp
 
 <div class="flex h-screen bg-gray-50" x-data="{ sidebarOpen: false, payrollOpen: {{ $peopleSectionActive ? 'true' : 'false' }} }">
@@ -60,7 +95,7 @@
                     R
                 </div>
                 <div>
-                    <p class="text-base font-semibold text-gray-900">{{ __('common.app.name_short') }}</p>
+                    <p class="text-base font-semibold text-gray-900">{{ $appBrandName ?? __('common.app.name_short') }}</p>
                     <p class="text-xs text-gray-500">{{ __('common.app.tagline') }}</p>
                 </div>
             </div>
@@ -76,8 +111,7 @@
                     <div>
                         <p class="mb-2 text-xs font-semibold uppercase text-gray-400">{{ __('navigation.groups.main') }}</p>
                         <ul class="space-y-1">
-                            @foreach ($navGroups['main'] as $item)
-                                @continue($item['permission'] && !auth()->user()->can($item['permission']))
+                            @foreach ($availableGroups['main'] as $item)
                                 @php
                                     $isActive = request()->routeIs($item['active']);
                                     $linkClasses = $isActive ? $baseClasses . ' bg-indigo-50 text-indigo-600 font-semibold' : $baseClasses;
@@ -90,6 +124,26 @@
                             @endforeach
                         </ul>
                     </div>
+
+                    <!-- Finance group -->
+                    @if($availableGroups['finance']->isNotEmpty())
+                        <div>
+                            <p class="mb-2 text-xs font-semibold uppercase text-gray-400">{{ __('navigation.groups.finance') }}</p>
+                            <ul class="space-y-1">
+                                @foreach ($availableGroups['finance'] as $item)
+                                    @php
+                                        $isActive = request()->routeIs($item['active']);
+                                        $linkClasses = $isActive ? $baseClasses . ' bg-indigo-50 text-indigo-600 font-semibold' : $baseClasses;
+                                    @endphp
+                                    <li>
+                                        <a href="{{ route($item['route']) }}" class="{{ $linkClasses }}">
+                                            <span class="flex-1 truncate">{{ $item['label'] }}</span>
+                                        </a>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
 
                     @if(auth()->user()->hasAnyRole(['admin', 'manager']))
                     <!-- People group -->
@@ -141,42 +195,44 @@
                     @endif
 
                     <!-- Insights group -->
-                    <div>
-                        <p class="mb-2 text-xs font-semibold uppercase text-gray-400">{{ __('navigation.groups.insights') }}</p>
-                        <ul class="space-y-1">
-                            @foreach ($navGroups['insights'] as $item)
-                                @continue($item['permission'] && !auth()->user()->can($item['permission']))
-                                @php
-                                    $isActive = request()->routeIs($item['active']);
-                                    $linkClasses = $isActive ? $baseClasses . ' bg-indigo-50 text-indigo-600 font-semibold' : $baseClasses;
-                                @endphp
-                                <li>
-                                    <a href="{{ route($item['route']) }}" class="{{ $linkClasses }}">
-                                        <span class="flex-1 truncate">{{ $item['label'] }}</span>
-                                    </a>
-                                </li>
-                            @endforeach
-                        </ul>
-                    </div>
+                    @if($availableGroups['insights']->isNotEmpty())
+                        <div>
+                            <p class="mb-2 text-xs font-semibold uppercase text-gray-400">{{ __('navigation.groups.insights') }}</p>
+                            <ul class="space-y-1">
+                                @foreach ($availableGroups['insights'] as $item)
+                                    @php
+                                        $isActive = request()->routeIs($item['active']);
+                                        $linkClasses = $isActive ? $baseClasses . ' bg-indigo-50 text-indigo-600 font-semibold' : $baseClasses;
+                                    @endphp
+                                    <li>
+                                        <a href="{{ route($item['route']) }}" class="{{ $linkClasses }}">
+                                            <span class="flex-1 truncate">{{ $item['label'] }}</span>
+                                        </a>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
 
                     <!-- System group -->
-                    <div>
-                        <p class="mb-2 text-xs font-semibold uppercase text-gray-400">{{ __('navigation.groups.system') }}</p>
-                        <ul class="space-y-1">
-                            @foreach ($navGroups['system'] as $item)
-                                @continue($item['permission'] && !auth()->user()->can($item['permission']))
-                                @php
-                                    $isActive = request()->routeIs($item['active']);
-                                    $linkClasses = $isActive ? $baseClasses . ' bg-indigo-50 text-indigo-600 font-semibold' : $baseClasses;
-                                @endphp
-                                <li>
-                                    <a href="{{ route($item['route']) }}" class="{{ $linkClasses }}">
-                                        <span class="flex-1 truncate">{{ $item['label'] }}</span>
-                                    </a>
-                                </li>
-                            @endforeach
-                        </ul>
-                    </div>
+                    @if($availableGroups['system']->isNotEmpty())
+                        <div>
+                            <p class="mb-2 text-xs font-semibold uppercase text-gray-400">{{ __('navigation.groups.system') }}</p>
+                            <ul class="space-y-1">
+                                @foreach ($availableGroups['system'] as $item)
+                                    @php
+                                        $isActive = request()->routeIs($item['active']);
+                                        $linkClasses = $isActive ? $baseClasses . ' bg-indigo-50 text-indigo-600 font-semibold' : $baseClasses;
+                                    @endphp
+                                    <li>
+                                        <a href="{{ route($item['route']) }}" class="{{ $linkClasses }}">
+                                            <span class="flex-1 truncate">{{ $item['label'] }}</span>
+                                        </a>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
                 </div>
             </nav>
 
@@ -226,7 +282,7 @@
                 <div class="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
                     <span class="text-white font-bold text-sm">R</span>
                 </div>
-                <span class="text-lg font-semibold text-gray-900">{{ __('common.app.name_short') }}</span>
+                <span class="text-lg font-semibold text-gray-900">{{ $appBrandName ?? __('common.app.name_short') }}</span>
             </div>
             <div class="w-6"></div>
         </header>

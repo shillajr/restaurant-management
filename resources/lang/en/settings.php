@@ -11,6 +11,7 @@ return [
         'notifications' => 'Notifications',
         'integration' => 'Integrations',
         'security' => 'Security',
+        'vendors' => 'Vendors',
         'items' => 'Items',
         'users' => 'Users',
     ],

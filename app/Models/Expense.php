@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Vendor;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -16,6 +17,10 @@ class Expense extends Model
         'purchase_order_id',
         'created_by',
         'category',
+        'item_name',
+        'quantity',
+        'unit_price',
+        'vendor_id',
         'vendor',
         'description',
         'amount',
@@ -23,14 +28,14 @@ class Expense extends Model
         'invoice_number',
         'receipt_path',
         'payment_method',
-        'items',
         'note',
     ];
 
     protected $casts = [
         'expense_date' => 'date',
         'amount' => 'decimal:2',
-        'items' => 'array',
+        'quantity' => 'decimal:2',
+        'unit_price' => 'decimal:2',
     ];
 
     /**
@@ -58,5 +63,10 @@ class Expense extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function vendor(): BelongsTo
+    {
+        return $this->belongsTo(Vendor::class);
     }
 }

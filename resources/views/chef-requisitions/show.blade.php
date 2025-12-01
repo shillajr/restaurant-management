@@ -19,15 +19,40 @@
                             'approved' => 'bg-green-100 text-green-800',
                             'rejected' => 'bg-red-100 text-red-800',
                             'fulfilled' => 'bg-blue-100 text-blue-800',
+                            'changes_requested' => 'bg-yellow-100 text-yellow-800',
                         ];
                         $color = $statusColors[$chefRequisition->status] ?? 'bg-gray-100 text-gray-800';
+                        $statusLabel = ucwords(str_replace('_', ' ', $chefRequisition->status));
+                        $isChangeRequestedState = $chefRequisition->status === 'changes_requested';
+                        $approveButtonLabel = $isChangeRequestedState ? '✔ Approve Request Changes' : '✔ Approve Requisition';
+                        $approveModalTitle = $isChangeRequestedState ? 'Approve Request Changes' : 'Approve Requisition';
+                        $approveSubmitLabel = $isChangeRequestedState ? 'Approve Changes' : 'Approve';
+                        $approveModalMessage = $isChangeRequestedState
+                            ? 'This will approve the requested updates and close the change-request cycle.'
+                            : 'This will approve the requisition and notify the requester.';
+                        $rejectButtonLabel = $isChangeRequestedState ? '✖ Reject Request' : '✖ Reject Requisition';
+                        $rejectModalTitle = $isChangeRequestedState ? 'Reject Request' : 'Reject Requisition';
+                        $rejectSubmitLabel = $isChangeRequestedState ? 'Reject Request' : 'Reject Requisition';
+                        $rejectModalPrompt = $isChangeRequestedState
+                            ? 'Please share why the resubmission is being rejected. The requester will see this note.'
+                            : 'Please share why the requisition is being rejected. The requester will see this note.';
                     @endphp
                     <span class="px-4 py-2 inline-flex text-sm leading-5 font-semibold rounded-full {{ $color }}">
-                        {{ ucfirst($chefRequisition->status) }}
+                        {{ $statusLabel }}
                     </span>
                 </div>
             </div>
         </div>
+
+        @if($chefRequisition->status === 'changes_requested' && $chefRequisition->change_request)
+            @php
+                $changeRequestCopy = __('requisitions.resubmit.change_request');
+            @endphp
+            <div class="mb-6 bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg">
+                <h3 class="text-sm font-semibold">{{ $changeRequestCopy['heading'] ?? 'Changes Requested' }}</h3>
+                <p class="mt-2 text-sm leading-relaxed">{{ $chefRequisition->change_request }}</p>
+            </div>
+        @endif
 
         @if(session('success'))
         <div class="mb-6 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
@@ -78,6 +103,28 @@
                 <!-- Items List -->
                 <div class="bg-white rounded-lg shadow-sm p-6">
                     <h2 class="text-lg font-semibold text-gray-900 mb-4">Items Requested</h2>
+                    @php
+                        $items = collect($chefRequisition->items ?? []);
+                        $hasVendorColumn = $items->contains(function ($row) {
+                            return !empty($row['vendor'] ?? null);
+                        });
+                        $hasPriceColumn = $items->contains(function ($row) {
+                            return isset($row['price']) || isset($row['unit_price']) || isset($row['line_total']) || isset($row['total']);
+                        });
+                        $grandTotal = null;
+                        if ($hasPriceColumn) {
+                            $grandTotal = $items->sum(function ($row) {
+                                $price = $row['price'] ?? $row['unit_price'] ?? null;
+                                $quantity = $row['quantity'] ?? $row['qty'] ?? 0;
+
+                                if ($price === null) {
+                                    return (float)($row['total'] ?? $row['line_total'] ?? 0);
+                                }
+
+                                return (float)$price * (float)$quantity;
+                            });
+                        }
+                    @endphp
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
@@ -86,51 +133,65 @@
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit</th>
-                                    @if(isset($chefRequisition->items[0]['vendor']))
+                                    @if($hasVendorColumn)
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor</th>
                                     @endif
-                                    @if(isset($chefRequisition->items[0]['price']))
+                                    @if($hasPriceColumn)
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit Price</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
                                     @endif
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
-                                @foreach($chefRequisition->items as $index => $item)
+                                @foreach($items as $index => $item)
+                                @php
+                                    $itemName = $item['item'] ?? $item['item_name'] ?? $item['name'] ?? 'Unknown Item';
+                                    $quantity = $item['quantity'] ?? $item['qty'] ?? 0;
+                                    $unit = $item['unit'] ?? $item['uom'] ?? '-';
+                                    $vendor = $item['vendor'] ?? null;
+                                    $price = $item['price'] ?? $item['unit_price'] ?? null;
+                                    $originalPrice = $item['originalPrice'] ?? $item['defaultPrice'] ?? null;
+                                    $lineTotal = $price !== null
+                                        ? (float)$price * (float)$quantity
+                                        : ($item['total'] ?? $item['line_total'] ?? null);
+                                @endphp
                                 <tr>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $index + 1 }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $item['item'] }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $item['quantity'] }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $item['unit'] ?? '-' }}</td>
-                                    @if(isset($item['vendor']))
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $item['vendor'] }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $itemName }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ rtrim(rtrim(number_format((float)$quantity, 2, '.', ''), '0'), '.') }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $unit }}</td>
+                                    @if($hasVendorColumn)
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $vendor ?? '-' }}</td>
                                     @endif
-                                    @if(isset($item['price']))
+                                    @if($hasPriceColumn)
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        {{ currency_format($item['price']) }}
-                                        @if(isset($item['originalPrice']) && $item['price'] != $item['originalPrice'])
-                                            <span class="ml-1 text-xs text-yellow-600" title="Original: {{ currency_format($item['originalPrice']) }}">⚠</span>
+                                        @if($price !== null)
+                                            {{ currency_format($price) }}
+                                        @else
+                                            -
+                                        @endif
+                                        @if($price !== null && $originalPrice !== null && round($price, 4) !== round($originalPrice, 4))
+                                            <span class="ml-1 text-xs text-yellow-600" title="Original: {{ currency_format($originalPrice) }}">⚠</span>
                                         @endif
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                        {{ currency_format($item['price'] * $item['quantity']) }}
+                                        @if($lineTotal !== null)
+                                            {{ currency_format($lineTotal) }}
+                                        @else
+                                            -
+                                        @endif
                                     </td>
                                     @endif
                                 </tr>
                                 @endforeach
                             </tbody>
-                            @if(isset($chefRequisition->items[0]['price']))
+                            @if($hasPriceColumn)
                             <tfoot class="bg-gray-50">
                                 <tr>
-                                    <td colspan="{{ isset($chefRequisition->items[0]['vendor']) ? 6 : 5 }}" class="px-6 py-4 text-right text-sm font-semibold text-gray-900">
+                                    <td colspan="{{ $hasVendorColumn ? 6 : 5 }}" class="px-6 py-4 text-right text-sm font-semibold text-gray-900">
                                         Grand Total:
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
-                                        @php
-                                            $grandTotal = collect($chefRequisition->items)->sum(function($item) {
-                                                return ($item['price'] ?? 0) * ($item['quantity'] ?? 0);
-                                            });
-                                        @endphp
                                         {{ currency_format($grandTotal) }}
                                     </td>
                                 </tr>
@@ -139,6 +200,7 @@
                         </table>
                     </div>
                 </div>
+
             </div>
 
             <!-- Sidebar -->
@@ -149,13 +211,13 @@
                     <div class="space-y-3">
                         <div class="flex justify-between">
                             <span class="text-sm text-gray-600">Total Items:</span>
-                            <span class="text-sm font-medium text-gray-900">{{ count($chefRequisition->items) }}</span>
+                            <span class="text-sm font-medium text-gray-900">{{ $items->count() }}</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-sm text-gray-600">Status:</span>
-                            <span class="text-sm font-medium text-gray-900">{{ ucfirst($chefRequisition->status) }}</span>
+                            <span class="text-sm font-medium text-gray-900">{{ $statusLabel }}</span>
                         </div>
-                        @if(isset($grandTotal))
+                        @if(!is_null($grandTotal))
                         <div class="flex justify-between border-t pt-3">
                             <span class="text-sm font-semibold text-gray-900">Total Cost:</span>
                             <span class="text-sm font-bold text-gray-900">{{ currency_format($grandTotal) }}</span>
@@ -170,47 +232,81 @@
                     <div class="space-y-3">
                         <!-- Approval Actions (for authorized approvers) -->
                         @can('approve requisitions')
-                            @if($chefRequisition->status === 'pending')
+                            @php
+                                $canReviewRequisition = in_array($chefRequisition->status, ['pending', 'changes_requested'], true);
+                            @endphp
+
+                            @if($canReviewRequisition)
                                 <button @click="showApproveModal = true"
                                         class="block w-full text-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                                    ✔ Approve Requisition
+                                    {{ $approveButtonLabel }}
                                 </button>
 
                                 <button @click="showRejectModal = true"
                                         class="block w-full text-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
-                                    ✖ Reject Requisition
+                                    {{ $rejectButtonLabel }}
                                 </button>
 
+                                @if(!$isChangeRequestedState)
                                 <button @click="showRequestChangesModal = true"
                                         class="block w-full text-center px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors">
                                     🔄 Request Changes
                                 </button>
+                                @endif
 
                                 <div class="border-t my-3"></div>
                             @endif
                         @endcan
 
                         <!-- Creator Actions -->
-                        @if($chefRequisition->status === 'pending' && Auth::id() === $chefRequisition->chef_id)
+                        @if(($chefRequisition->status === 'pending' || $chefRequisition->status === 'changes_requested') && Auth::id() === $chefRequisition->chef_id)
                         <a href="{{ route('chef-requisitions.edit', $chefRequisition->id) }}" 
                            class="block w-full text-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
-                            Edit Requisition
+                            {{ $chefRequisition->status === 'changes_requested' ? 'Edit & Resubmit' : 'Edit Requisition' }}
                         </a>
                         @endif
 
                         <!-- Convert to PO Action (for approved requisitions) -->
                         @if($chefRequisition->status === 'approved')
                             @if(!$chefRequisition->purchaseOrder)
-                            <!-- Test: Simple form without modal -->
-                            <form method="POST" action="{{ route('purchase-orders.store') }}" 
-                                  onsubmit="console.log('Direct form submitting'); return confirm('Create Purchase Order from this requisition?');">
-                                @csrf
-                                <input type="hidden" name="requisition_id" value="{{ $chefRequisition->id }}">
-                                <button type="submit"
-                                        class="block w-full text-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                                @if($canGeneratePurchaseOrder)
+                                <form method="POST" action="{{ route('purchase-orders.store') }}"
+                                      onsubmit="return confirm('Create a Purchase Order from this requisition?');">
+                                    @csrf
+                                    <input type="hidden" name="requisition_id" value="{{ $chefRequisition->id }}">
+
+                                    <div class="mb-3 text-left">
+                                        <label for="assigned_to" class="block text-sm font-medium text-gray-700">Assign to purchaser</label>
+                                        @if($purchaserOptions->isNotEmpty())
+                                            <select id="assigned_to" name="assigned_to"
+                                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                                                @foreach($purchaserOptions->sortBy('name') as $purchaser)
+                                                    <option value="{{ $purchaser['id'] }}" @selected(old('assigned_to', $defaultPurchaserId) == $purchaser['id'])>
+                                                        {{ $purchaser['name'] }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        @else
+                                            <input type="hidden" name="assigned_to" value="{{ $defaultPurchaserId }}">
+                                            <p class="mt-1 text-sm text-gray-500">No dedicated purchasers found. This PO will be assigned to you.</p>
+                                        @endif
+                                        @error('assigned_to')
+                                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                        @enderror
+                                    </div>
+
+                                    <button type="submit"
+                                            class="block w-full text-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                                        📋 Generate Purchase Order
+                                    </button>
+                                </form>
+                                @else
+                                <button type="button" disabled
+                                        class="block w-full text-center px-4 py-2 bg-green-200 text-green-800 rounded-lg cursor-not-allowed"
+                                        title="Only approvers can generate purchase orders.">
                                     📋 Generate Purchase Order
                                 </button>
-                            </form>
+                                @endif
                             @else
                             <a href="{{ route('purchase-orders.show', $chefRequisition->purchaseOrder->id) }}"
                                class="block w-full text-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
@@ -224,7 +320,7 @@
                             Back to List
                         </a>
 
-                        @if($chefRequisition->status === 'pending' && Auth::id() === $chefRequisition->chef_id)
+                                                @if($chefRequisition->status === 'pending' && Auth::id() === $chefRequisition->chef_id)
                         <form method="POST" action="{{ route('chef-requisitions.destroy', $chefRequisition->id) }}" 
                               onsubmit="return confirm('Are you sure you want to delete this requisition?');">
                             @csrf
@@ -271,6 +367,23 @@
                             </div>
                         </div>
                         @endif
+
+                        @if($chefRequisition->change_request && $chefRequisition->status === 'changes_requested')
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <div class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
+                                    <svg class="w-4 h-4 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-900">{{ __('requisitions.resubmit.change_request.heading') }}</p>
+                                <p class="text-xs text-gray-500">{{ $chefRequisition->checked_at ? \Carbon\Carbon::parse($chefRequisition->checked_at)->format('M d, Y h:i A') : '' }}</p>
+                                <p class="mt-2 text-sm text-gray-700">{{ $chefRequisition->change_request }}</p>
+                            </div>
+                        </div>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -282,35 +395,29 @@
          x-cloak
          class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50"
          @click.self="showApproveModal = false">
-        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div class="mt-3">
-                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
-                    <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                    </svg>
-                </div>
-                <h3 class="text-lg leading-6 font-medium text-gray-900 text-center mt-4">Approve Requisition</h3>
-                <div class="mt-2 px-7 py-3">
-                    <p class="text-sm text-gray-500 text-center">
-                        Are you sure you want to approve this requisition?
-                    </p>
-                </div>
-                <div class="items-center px-4 py-3">
-                    <form method="POST" action="{{ route('chef-requisitions.approve', $chefRequisition->id) }}">
-                        @csrf
-                        <div class="flex space-x-3">
-                            <button type="button" 
-                                    @click="showApproveModal = false"
-                                    class="flex-1 px-4 py-2 bg-gray-200 text-gray-900 rounded-lg hover:bg-gray-300">
-                                Cancel
-                            </button>
-                            <button type="submit" 
-                                    class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                                Approve
-                            </button>
-                        </div>
-                    </form>
-                </div>
+        <div class="relative top-20 mx-auto w-full max-w-md p-6 border shadow-lg rounded-md bg-white">
+            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
+                <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+            </div>
+            <h3 class="mt-4 text-lg leading-6 font-medium text-gray-900 text-center">{{ $approveModalTitle }}</h3>
+            <p class="mt-2 text-sm text-gray-500 text-center">{{ $approveModalMessage }}</p>
+            <div class="mt-6">
+                <form method="POST" action="{{ route('chef-requisitions.approve', $chefRequisition->id) }}">
+                    @csrf
+                    <div class="flex space-x-3">
+                        <button type="button" 
+                                @click="showApproveModal = false"
+                                class="flex-1 px-4 py-2 bg-gray-200 text-gray-900 rounded-lg hover:bg-gray-300">
+                            Cancel
+                        </button>
+                        <button type="submit" 
+                                class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                            {{ $approveSubmitLabel }}
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -360,39 +467,38 @@
          x-cloak
          class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50"
          @click.self="showRejectModal = false">
-        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div class="mt-3">
-                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
-                    <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </div>
-                <h3 class="text-lg leading-6 font-medium text-gray-900 text-center mt-4">Reject Requisition</h3>
-                <div class="mt-2 px-7 py-3">
-                    <form method="POST" action="{{ route('chef-requisitions.reject', $chefRequisition->id) }}">
-                        @csrf
-                        <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Rejection Reason *</label>
-                            <textarea name="rejection_reason" 
-                                      x-model="rejectionReason"
-                                      rows="4" 
-                                      required
-                                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                                      placeholder="Please provide a reason for rejection..."></textarea>
-                        </div>
-                        <div class="flex space-x-3">
-                            <button type="button" 
-                                    @click="showRejectModal = false; rejectionReason = ''"
-                                    class="flex-1 px-4 py-2 bg-gray-200 text-gray-900 rounded-lg hover:bg-gray-300">
-                                Cancel
-                            </button>
-                            <button type="submit" 
-                                    class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
-                                Reject
-                            </button>
-                        </div>
-                    </form>
-                </div>
+        <div class="relative top-20 mx-auto w-full max-w-md p-6 border shadow-lg rounded-md bg-white">
+            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </div>
+            <h3 class="mt-4 text-lg leading-6 font-medium text-gray-900 text-center">{{ $rejectModalTitle }}</h3>
+            <p class="mt-2 text-sm text-gray-500 text-center">{{ $rejectModalPrompt }}</p>
+            <div class="mt-6">
+                <form method="POST" action="{{ route('chef-requisitions.reject', $chefRequisition->id) }}">
+                    @csrf
+                    <div class="mb-4 text-left">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Rejection Reason *</label>
+                        <textarea name="rejection_reason" 
+                                  x-model="rejectionReason"
+                                  rows="4" 
+                                  required
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                  placeholder="Share the reason for rejection"></textarea>
+                    </div>
+                    <div class="flex space-x-3">
+                        <button type="button" 
+                                @click="showRejectModal = false; rejectionReason = ''"
+                                class="flex-1 px-4 py-2 bg-gray-200 text-gray-900 rounded-lg hover:bg-gray-300">
+                            Cancel
+                        </button>
+                        <button type="submit" 
+                                class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                            {{ $rejectSubmitLabel }}
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

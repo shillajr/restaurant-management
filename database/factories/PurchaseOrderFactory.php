@@ -2,8 +2,9 @@
 
 namespace Database\Factories;
 
-use App\Models\PurchaseOrder;
 use App\Models\ChefRequisition;
+use App\Models\PurchaseOrder;
+use App\Models\Vendor;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -13,11 +14,30 @@ class PurchaseOrderFactory extends Factory
 
     public function definition(): array
     {
+        $quantity = fake()->numberBetween(1, 20);
+        $price = fake()->numberBetween(5000, 15000);
+        $subtotal = $quantity * $price;
+        $vendorName = fake()->company();
+
         return [
+            'po_number' => sprintf('PO-%s', fake()->unique()->numerify('########')),
             'requisition_id' => ChefRequisition::factory(),
+            'created_by' => User::factory(),
             'assigned_to' => User::factory(),
+            'items' => [[
+                'item' => fake()->randomElement(['Tomatoes', 'Cooking Oil', 'Rice']),
+                'quantity' => $quantity,
+                'uom' => fake()->randomElement(['kg', 'litre', 'bag']),
+                'price' => $price,
+                'vendor' => $vendorName,
+            ]],
+            'total_quantity' => $quantity,
+            'subtotal' => $subtotal,
+            'tax' => 0,
+            'other_charges' => 0,
+            'grand_total' => $subtotal,
             'status' => 'assigned',
-            'supplier_id' => null,
+            'supplier_id' => Vendor::factory(),
             'invoice_number' => null,
             'total_amount' => null,
             'purchased_at' => null,

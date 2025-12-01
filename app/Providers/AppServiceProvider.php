@@ -42,6 +42,20 @@ class AppServiceProvider extends ServiceProvider
 
             $view->with('activeLocale', $activeLocale);
             $view->with('supportedLocales', Localization::all());
+
+            $brandName = __('common.app.name_short');
+            $user = request()?->user();
+
+            if ($user) {
+                $user->loadMissing('entity.profileSettings');
+
+                $entity = $user->entity;
+                $brandName = $entity?->profileSettings?->restaurant_name
+                    ?? $entity?->name
+                    ?? $brandName;
+            }
+
+            $view->with('appBrandName', $brandName);
         });
     }
 

@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
@@ -13,12 +15,15 @@ class PurchaseOrder extends Model
 {
     use HasFactory, LogsActivity;
 
+    public const WORKFLOW_COMPLETED = 'completed';
+
     protected $fillable = [
         'po_number',
         'requisition_id',
         'created_by',
         'approved_by',
         'approved_at',
+        'generated_by',
         'requested_delivery_date',
         'items',
         'total_quantity',
@@ -29,9 +34,15 @@ class PurchaseOrder extends Model
         'status',
         // New workflow-centric status distinct from legacy status column
         'workflow_status',
+        'has_credit_items',
+        'credit_outstanding_amount',
+        'credit_closed_at',
         'notes',
         // Legacy fields (kept for compatibility)
         'assigned_to',
+        'cancelled_by',
+        'cancelled_at',
+        'cancellation_reason',
         'supplier_id',
         'invoice_number',
         'total_amount',
@@ -50,6 +61,10 @@ class PurchaseOrder extends Model
         'grand_total' => 'decimal:2',
         'purchased_at' => 'datetime',
         'total_amount' => 'decimal:2',
+        'cancelled_at' => 'datetime',
+        'credit_outstanding_amount' => 'decimal:2',
+        'credit_closed_at' => 'datetime',
+        'has_credit_items' => 'boolean',
     ];
 
     /**
@@ -60,7 +75,9 @@ class PurchaseOrder extends Model
         'sent_to_vendor', // PO dispatched to vendor
         'returned',       // Vendor responded with changes / questions
         'approved',       // Final vendor confirmation / internal final approval
+        'completed',      // Purchasing team marked as completed
         'rejected',       // Rejected internally or by vendor
+        'cancelled',      // Cancelled after approval with appropriate permissions
     ];
 
     /**
@@ -70,11 +87,28 @@ class PurchaseOrder extends Model
     {
         return [
             'pending' => 'bg-yellow-100 text-yellow-800',
-            'sent_to_vendor' => 'bg-blue-100 text-blue-800',
+            'sent_to_vendor' => 'bg-indigo-100 text-indigo-800',
             'returned' => 'bg-purple-100 text-purple-800',
             'approved' => 'bg-green-100 text-green-800',
+            'completed' => 'bg-emerald-200 text-emerald-900',
             'rejected' => 'bg-red-100 text-red-800',
+            'cancelled' => 'bg-gray-200 text-gray-800',
         ][$status] ?? 'bg-gray-100 text-gray-800';
+    }
+
+    public function creditLedgers(): HasMany
+    {
+        return $this->hasMany(FinancialLedger::class);
+    }
+
+    public function markCreditCompleted(): void
+    {
+        $this->forceFill([
+            'has_credit_items' => false,
+            'credit_outstanding_amount' => 0,
+            'credit_closed_at' => Carbon::now(),
+            'workflow_status' => self::WORKFLOW_COMPLETED,
+        ])->saveQuietly();
     }
 
     /**
@@ -121,6 +155,11 @@ class PurchaseOrder extends Model
         return $this->belongsTo(User::class, 'approved_by');
     }
 
+    public function generator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'generated_by');
+    }
+
     /**
      * Get the user who created this PO (from requisition)
      */
@@ -135,6 +174,11 @@ class PurchaseOrder extends Model
     public function assignedTo(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_to');
+    }
+
+    public function cancelledBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelled_by');
     }
 
     /**

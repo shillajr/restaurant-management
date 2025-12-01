@@ -14,6 +14,7 @@ use App\Models\Item;
 use App\Models\ItemCategory;
 use App\Models\Vendor;
 use App\Models\User;
+use App\Services\SmsNotificationService;
 use App\Support\Currency;
 use App\Support\Localization;
 use Illuminate\Http\RedirectResponse;
@@ -57,6 +58,12 @@ class SettingsController extends Controller
                 'sms_enabled' => false,
                 'whatsapp_enabled' => false,
                 'sms_provider' => 'twilio',
+                'requisition_submitted_notification_phones' => array_fill_keys(array_keys($this->requisitionNotificationRoles()), []),
+                'requisition_submitted_templates' => $this->defaultRequisitionSubmittedTemplates(),
+                'requisition_approved_notification_phones' => array_fill_keys(array_keys($this->requisitionNotificationRoles()), []),
+                'requisition_approved_templates' => $this->defaultRequisitionApprovedTemplates(),
+                'user_onboarding_sms_enabled' => false,
+                'user_onboarding_sms_template' => SmsNotificationService::DEFAULT_USER_ONBOARDING_TEMPLATE,
             ]
         );
 
@@ -77,6 +84,15 @@ class SettingsController extends Controller
 
         $items = Item::orderBy('name')->get();
         $vendors = Vendor::orderBy('name')->get();
+        $vendorStats = [
+            'total' => $vendors->count(),
+            'active' => $vendors->where('is_active', true)->count(),
+            'inactive' => $vendors->where('is_active', false)->count(),
+        ];
+        $editingVendor = null;
+        if ($request->filled('edit_vendor')) {
+            $editingVendor = $vendors->firstWhere('id', (int) $request->query('edit_vendor'));
+        }
         $categories = ItemCategory::orderBy('name')->get();
 
         $editingItem = null;
@@ -92,7 +108,34 @@ class SettingsController extends Controller
 
         $roles = Role::orderBy('name')->get();
 
-        $activeTab = session('activeTab', $request->query('tab', 'general'));
+        $availableBusinessSections = ['general', 'restaurant', 'notifications'];
+        $availableProductSections = ['vendors', 'items'];
+
+        $activeTab = session('activeTab', $request->query('tab')) ?? 'business';
+        $businessSection = session('businessSection', $request->query('business_section', 'general'));
+        $productSection = session('productSection', $request->query('product_section', 'vendors'));
+
+        if (! in_array($businessSection, $availableBusinessSections, true)) {
+            $businessSection = 'general';
+        }
+
+        if (! in_array($productSection, $availableProductSections, true)) {
+            $productSection = 'vendors';
+        }
+
+        if (in_array($activeTab, $availableBusinessSections, true)) {
+            $businessSection = $activeTab;
+            $activeTab = 'business';
+        }
+
+        if (in_array($activeTab, $availableProductSections, true)) {
+            $productSection = $activeTab;
+            $activeTab = 'products';
+        }
+
+        if (! in_array($activeTab, ['business', 'products', 'integration', 'security', 'users'], true)) {
+            $activeTab = 'business';
+        }
 
         $unitOptions = [
             'piece',
@@ -114,13 +157,25 @@ class SettingsController extends Controller
             'items' => $items,
             'itemCategories' => $categories,
             'vendors' => $vendors,
+            'vendorStats' => $vendorStats,
+            'editingVendor' => $editingVendor,
             'users' => $users,
             'roles' => $roles,
             'activeTab' => $activeTab,
+            'businessSection' => $businessSection,
+            'productSection' => $productSection,
             'editingItem' => $editingItem,
             'supportedCurrencies' => Currency::all(),
             'supportedLocales' => Localization::all(),
             'unitOptions' => $unitOptions,
+            'requisitionNotificationRoles' => $this->requisitionNotificationRoles(),
+            'defaultRequisitionTemplates' => [
+                'submitted' => $this->defaultRequisitionSubmittedTemplates(),
+                'approved' => $this->defaultRequisitionApprovedTemplates(),
+            ],
+            'requisitionTemplatePlaceholders' => $this->requisitionTemplatePlaceholders(),
+            'userOnboardingDefaultTemplate' => SmsNotificationService::DEFAULT_USER_ONBOARDING_TEMPLATE,
+            'userOnboardingPlaceholders' => SmsNotificationService::USER_ONBOARDING_PLACEHOLDERS,
         ]);
     }
 
@@ -140,10 +195,25 @@ class SettingsController extends Controller
 
         $handler();
 
+        return $this->redirectForTab($tab);
+    }
+
+    protected function redirectForTab(string $tab): RedirectResponse
+    {
+        $success = __('settings.updated_success');
+
+        if (in_array($tab, ['general', 'restaurant', 'notifications'], true)) {
+            return redirect()
+                ->route('settings')
+                ->with('activeTab', 'business')
+                ->with('businessSection', $tab)
+                ->with('success', $success);
+        }
+
         return redirect()
             ->route('settings')
             ->with('activeTab', $tab)
-            ->with('success', __('settings.updated_success'));
+            ->with('success', $success);
     }
 
     protected function resolveEntity(User $user): Entity
@@ -218,6 +288,38 @@ class SettingsController extends Controller
 
     protected function updateNotificationSettings(Request $request, Entity $entity): void
     {
+        $emailsInput = $request->input('purchase_order_notification_emails');
+        $phonesInput = $request->input('purchase_order_notification_phones');
+        $submittedPhonesInput = (array) $request->input('requisition_submitted_phones', []);
+        $approvedPhonesInput = (array) $request->input('requisition_approved_phones', []);
+        $submittedTemplateInput = (array) $request->input('requisition_submitted_templates', []);
+        $approvedTemplateInput = (array) $request->input('requisition_approved_templates', []);
+        $userOnboardingTemplateInput = trim((string) $request->input('user_onboarding_sms_template', ''));
+
+        $roles = array_keys($this->requisitionNotificationRoles());
+
+        $submittedPhones = [];
+        foreach ($roles as $role) {
+            $submittedPhones[$role] = $this->normalizeContactList($submittedPhonesInput[$role] ?? '');
+        }
+
+        $approvedPhones = [];
+        foreach ($roles as $role) {
+            $approvedPhones[$role] = $this->normalizeContactList($approvedPhonesInput[$role] ?? '');
+        }
+
+        $submittedTemplates = [];
+        foreach ($roles as $role) {
+            $template = trim((string) ($submittedTemplateInput[$role] ?? ''));
+            $submittedTemplates[$role] = $template !== '' ? $template : null;
+        }
+
+        $approvedTemplates = [];
+        foreach ($roles as $role) {
+            $template = trim((string) ($approvedTemplateInput[$role] ?? ''));
+            $approvedTemplates[$role] = $template !== '' ? $template : null;
+        }
+
         $data = [
             'notify_requisitions' => $request->boolean('notify_requisitions'),
             'notify_expenses' => $request->boolean('notify_expenses'),
@@ -233,12 +335,39 @@ class SettingsController extends Controller
                 $request->boolean('notify_purchase_orders') ? 'purchase_orders' : null,
                 $request->boolean('notify_payroll') ? 'payroll' : null,
             ])),
+            'purchase_order_notification_emails' => $this->normalizeContactList($emailsInput),
+            'purchase_order_notification_phones' => $this->normalizeContactList($phonesInput),
+            'requisition_submitted_notification_phones' => $submittedPhones,
+            'requisition_submitted_templates' => $submittedTemplates,
+            'requisition_approved_notification_phones' => $approvedPhones,
+            'requisition_approved_templates' => $approvedTemplates,
+            'user_onboarding_sms_enabled' => $request->boolean('user_onboarding_sms_enabled'),
+            'user_onboarding_sms_template' => $userOnboardingTemplateInput !== '' ? $userOnboardingTemplateInput : null,
         ];
 
         EntityNotificationSetting::updateOrCreate(
             ['entity_id' => $entity->id],
             $data
         );
+    }
+
+    /**
+     * Normalize a multi-line or comma-delimited contact string into an array.
+     */
+    protected function normalizeContactList($value): array
+    {
+        if (is_array($value)) {
+            $raw = $value;
+        } else {
+            $raw = preg_split('/[\n,;]+/', (string) $value ?? '', -1, PREG_SPLIT_NO_EMPTY);
+        }
+
+        return collect($raw)
+            ->map(fn ($entry) => trim((string) $entry))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
     }
 
     protected function updateIntegrationSettings(Request $request, Entity $entity): void
@@ -290,5 +419,52 @@ class SettingsController extends Controller
                 'password_expiry_days' => 90,
             ]
         );
+    }
+
+    protected function requisitionNotificationRoles(): array
+    {
+        return [
+            'chef' => 'Chef',
+            'purchaser' => 'Purchasing Officer',
+            'manager' => 'Manager',
+        ];
+    }
+
+    protected function defaultRequisitionSubmittedTemplates(): array
+    {
+        return [
+            'chef' => 'Your requisition #{requisition_number} has been submitted successfully.',
+            'purchaser' => 'Chef {actor_name} submitted requisition #{requisition_number} for {requested_for_date}. Items: {item_count}.',
+            'manager' => 'New requisition #{requisition_number} from {chef_name} is pending review for {requested_for_date}.',
+        ];
+    }
+
+    protected function defaultRequisitionApprovedTemplates(): array
+    {
+        return [
+            'chef' => 'Manager {actor_name} approved your requisition #{requisition_number}.',
+            'purchaser' => 'Requisition #{requisition_number} approved by {actor_name}. Total quantity: {total_quantity}.',
+            'manager' => '{actor_name} approved requisition #{requisition_number}. Ready for purchase order conversion.',
+        ];
+    }
+
+    protected function requisitionTemplatePlaceholders(): array
+    {
+        return [
+            '{actor_name}' => 'User who performed the action (chef or manager).',
+            '{chef_name}' => 'Name of the chef who created the requisition.',
+            '{requisition_id}' => 'Numeric requisition identifier.',
+            '{requisition_number}' => 'Formatted requisition number (e.g., REQ-0005).',
+            '{requested_for_date}' => 'Requested fulfillment date.',
+            '{submitted_at}' => 'Submission timestamp.',
+            '{approved_at}' => 'Approval timestamp.',
+            '{status}' => 'Current requisition status.',
+            '{item_count}' => 'Number of items in the requisition.',
+            '{total_quantity}' => 'Sum of item quantities.',
+            '{note}' => 'Requisition note, if provided.',
+            '{approval_notes}' => 'Notes supplied during approval (if any).',
+            '{entity_name}' => 'Restaurant/entity name.',
+            '{requisition_url}' => 'Direct link to view the requisition.',
+        ];
     }
 }

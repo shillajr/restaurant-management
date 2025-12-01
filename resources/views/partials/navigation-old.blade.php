@@ -63,7 +63,7 @@
 
                 @can('create expenses')
                 <li>
-                    <a href="{{ route('expenses.create') }}" 
+                    <a href="{{ route('expenses.index') }}" 
                        class="nav-item {{ request()->routeIs('expenses.*') ? 'active' : '' }}">
                         <span class="nav-text">Expenses</span>
                         @if(request()->routeIs('expenses.*'))

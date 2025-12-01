@@ -26,6 +26,14 @@ class EntityNotificationSetting extends Model
         'whatsapp_enabled',
         'sms_provider',
         'notification_channels',
+        'purchase_order_notification_emails',
+        'purchase_order_notification_phones',
+        'requisition_submitted_notification_phones',
+        'requisition_submitted_templates',
+        'requisition_approved_notification_phones',
+        'requisition_approved_templates',
+        'user_onboarding_sms_enabled',
+        'user_onboarding_sms_template',
     ];
 
     /**
@@ -40,6 +48,13 @@ class EntityNotificationSetting extends Model
         'sms_enabled' => 'boolean',
         'whatsapp_enabled' => 'boolean',
         'notification_channels' => 'array',
+        'purchase_order_notification_emails' => 'array',
+        'purchase_order_notification_phones' => 'array',
+        'requisition_submitted_notification_phones' => 'array',
+        'requisition_submitted_templates' => 'array',
+        'requisition_approved_notification_phones' => 'array',
+        'requisition_approved_templates' => 'array',
+        'user_onboarding_sms_enabled' => 'boolean',
     ];
 
     public function entity(): BelongsTo

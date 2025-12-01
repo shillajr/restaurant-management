@@ -131,7 +131,8 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Requisition</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Workflow</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PO State of Approval</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Credit</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -161,7 +162,9 @@
                                         'assigned' => 'bg-indigo-100 text-indigo-800',
                                         'ordered' => 'bg-purple-100 text-purple-800',
                                         'partially_received' => 'bg-yellow-100 text-yellow-800',
+                                        'sent_to_vendor' => 'bg-blue-100 text-blue-800',
                                         'received' => 'bg-green-100 text-green-800',
+                                        'completed' => 'bg-green-100 text-green-800',
                                         'closed' => 'bg-gray-100 text-gray-800',
                                         'cancelled' => 'bg-red-100 text-red-800',
                                     ];
@@ -172,9 +175,44 @@
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full {{ \App\Models\PurchaseOrder::workflowStatusColor($po->workflow_status) }}">
-                                    {{ ucfirst(str_replace('_', ' ', $po->workflow_status)) }}
+                                @php
+                                    $approvalStates = [
+                                        'pending' => ['label' => 'Pending Approval', 'color' => 'bg-yellow-100 text-yellow-800'],
+                                        'approved' => ['label' => 'Approved · Waiting to Send', 'color' => 'bg-blue-100 text-blue-800'],
+                                        'sent_to_vendor' => ['label' => 'Sent to Vendors', 'color' => 'bg-green-100 text-green-800'],
+                                        'returned' => ['label' => 'Returned for Changes', 'color' => 'bg-orange-100 text-orange-800'],
+                                        'completed' => ['label' => 'Purchased / Completed', 'color' => 'bg-emerald-100 text-emerald-800'],
+                                        'rejected' => ['label' => 'Rejected', 'color' => 'bg-red-100 text-red-800'],
+                                    ];
+                                    $approvalState = $approvalStates[$po->workflow_status] ?? [
+                                        'label' => ucfirst(str_replace('_', ' ', $po->workflow_status ?? 'pending')),
+                                        'color' => 'bg-gray-100 text-gray-800',
+                                    ];
+                                @endphp
+                                <span class="px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full {{ $approvalState['color'] }}">
+                                    {{ $approvalState['label'] }}
                                 </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                @php
+                                    $creditOutstanding = (float) ($po->credit_outstanding_amount ?? 0);
+                                @endphp
+                                @if($po->has_credit_items || $creditOutstanding > 0)
+                                    <div class="text-sm font-semibold text-gray-900">
+                                        {{ currency_format($creditOutstanding) }}
+                                    </div>
+                                    <div class="text-xs text-gray-500">
+                                        @if($creditOutstanding > 0)
+                                            Outstanding
+                                        @elseif($po->credit_closed_at)
+                                            Cleared {{ $po->credit_closed_at->format('M d, Y') }}
+                                        @else
+                                            Cleared
+                                        @endif
+                                    </div>
+                                @else
+                                    <span class="text-xs text-gray-500">No credit</span>
+                                @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm font-semibold text-gray-900">{{ currency_format($po->grand_total) }}</div>
@@ -193,7 +231,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="8" class="text-center py-12">
+                            <td colspan="9" class="text-center py-12">
                                 <div class="text-gray-500">
                                     <svg class="mx-auto h-16 w-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>

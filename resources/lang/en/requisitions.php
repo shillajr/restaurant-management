@@ -51,4 +51,26 @@ return [
             ],
         ],
     ],
+    'edit' => [
+        'title' => 'Edit Chef Requisition',
+        'description' => 'Update this requisition before sending it for approval again.',
+        'actions' => [
+            'cancel' => 'Cancel',
+            'submit' => 'Save Updates',
+        ],
+        'change_request' => [
+            'heading' => 'Previous Reviewer Feedback',
+        ],
+    ],
+    'resubmit' => [
+        'title' => 'Resubmit Chef Requisition',
+        'description' => 'Address the requested changes and send the requisition back for review.',
+        'actions' => [
+            'cancel' => 'Cancel',
+            'submit' => 'Resubmit for Approval',
+        ],
+        'change_request' => [
+            'heading' => 'Changes Requested',
+        ],
+    ],
 ];

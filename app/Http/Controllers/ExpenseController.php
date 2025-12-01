@@ -3,23 +3,84 @@
 namespace App\Http\Controllers;
 
 use App\Models\Expense;
-use App\Models\Item;
+use App\Models\Vendor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class ExpenseController extends Controller
 {
+    private const CATEGORY_OPTIONS = [
+        'Wages',
+        'Rent / Lease Payments',
+        'Utilities',
+        'Equipment Purchase',
+        'Repairs & Maintenance',
+        'Restaurant Supplies',
+        'Marketing & Advertising',
+        'Licenses, Permits & Compliance',
+        'Insurance',
+        'Administrative',
+        'Transportation',
+        'Others',
+    ];
+
+    private const PAYMENT_METHOD_OPTIONS = [
+        'Cash',
+        'Card',
+        'Bank Transfer',
+        'Mobile Payment',
+        'Check',
+        'Other',
+    ];
+
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $expenses = Expense::with('creator')
-            ->latest()
-            ->paginate(15);
+        $filters = [
+            'date_from' => $request->input('date_from'),
+            'date_to' => $request->input('date_to'),
+            'category' => $request->input('category'),
+            'amount_min' => $request->input('amount_min'),
+            'amount_max' => $request->input('amount_max'),
+        ];
 
-        return view('expenses.index', compact('expenses'));
+        $expensesQuery = Expense::with(['creator', 'vendor'])
+            ->orderByDesc('expense_date')
+            ->orderByDesc('created_at');
+
+        if (! empty($filters['date_from'])) {
+            $expensesQuery->whereDate('expense_date', '>=', $filters['date_from']);
+        }
+
+        if (! empty($filters['date_to'])) {
+            $expensesQuery->whereDate('expense_date', '<=', $filters['date_to']);
+        }
+
+        if (! empty($filters['category']) && in_array($filters['category'], self::CATEGORY_OPTIONS, true)) {
+            $expensesQuery->where('category', $filters['category']);
+        }
+
+        if (! empty($filters['amount_min']) && is_numeric($filters['amount_min'])) {
+            $expensesQuery->where('amount', '>=', (float) $filters['amount_min']);
+        }
+
+        if (! empty($filters['amount_max']) && is_numeric($filters['amount_max'])) {
+            $expensesQuery->where('amount', '<=', (float) $filters['amount_max']);
+        }
+
+        $expenses = $expensesQuery->paginate(15)->appends(array_filter($filters, static function ($value) {
+            return ! is_null($value) && $value !== '';
+        }));
+
+        return view('expenses.index', [
+            'expenses' => $expenses,
+            'filters' => $filters,
+            'categories' => self::CATEGORY_OPTIONS,
+        ]);
     }
 
     /**
@@ -27,7 +88,13 @@ class ExpenseController extends Controller
      */
     public function create()
     {
-        return view('expenses.create');
+        $vendors = Vendor::orderBy('name')->get(['id', 'name']);
+
+        return view('expenses.create', [
+            'categories' => self::CATEGORY_OPTIONS,
+            'paymentMethods' => self::PAYMENT_METHOD_OPTIONS,
+            'vendors' => $vendors,
+        ]);
     }
 
     /**
@@ -35,64 +102,40 @@ class ExpenseController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'category' => 'required|string',
-            'expense_date' => 'required|date',
-            'description' => 'nullable|string',
-            'items' => 'required|array|min:1',
-            'items.*.item_id' => 'required|exists:items,id',
-            'items.*.quantity' => 'required|numeric|min:0.01',
-            'items.*.unit_price' => 'required|numeric|min:0.01',
-            'items.*.invoice_number' => 'nullable|string',
-            'items.*.payment_method' => 'nullable|string',
-            'items.*.description' => 'nullable|string',
-            'items.*.receipt' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
-            'amount' => 'required|numeric|min:0.01',
-        ]);
+        $validated = $this->validateExpense($request);
 
-        // Process items to include item names, vendors, and per-item details
-        $processedItems = [];
-        $totalAmount = 0;
-
-        foreach ($validated['items'] as $index => $itemData) {
-            $item = Item::find($itemData['item_id']);
-            
-            $lineTotal = $itemData['quantity'] * $itemData['unit_price'];
-            $totalAmount += $lineTotal;
-
-            // Handle per-item receipt upload
-            $receiptPath = null;
-            if ($request->hasFile("items.{$index}.receipt")) {
-                $receiptPath = $request->file("items.{$index}.receipt")->store('receipts', 'public');
-            }
-
-            $processedItems[] = [
-                'item_id' => $item->id,
-                'name' => $item->name,
-                'vendor' => $item->vendor,
-                'quantity' => $itemData['quantity'],
-                'unit_price' => $itemData['unit_price'],
-                'line_total' => $lineTotal,
-                'invoice_number' => $itemData['invoice_number'] ?? null,
-                'payment_method' => $itemData['payment_method'] ?? null,
-                'description' => $itemData['description'] ?? null,
-                'receipt_path' => $receiptPath,
-            ];
+        $vendor = null;
+        if (! empty($validated['vendor_id'])) {
+            $vendor = Vendor::find($validated['vendor_id']);
         }
 
-        // Create the expense
-        $expense = Expense::create([
+        $receiptPath = null;
+        if ($request->hasFile('proof')) {
+            $receiptPath = $request->file('proof')->store('expenses', 'public');
+        }
+
+        $amount = round($validated['quantity'] * $validated['unit_price'], 2);
+
+        Expense::create([
             'category' => $validated['category'],
             'expense_date' => $validated['expense_date'],
-            'description' => $validated['description'],
-            'amount' => $totalAmount,
-            'items' => $processedItems,
+            'description' => $validated['description'] ?? '',
+            'item_name' => $validated['item_name'],
+            'quantity' => $validated['quantity'],
+            'unit_price' => $validated['unit_price'],
+            'amount' => $amount,
+            'vendor_id' => $vendor?->id,
+            'vendor' => $vendor?->name,
+            'payment_method' => $validated['payment_method'],
+            'invoice_number' => $validated['invoice_number'] ?? null,
+            'receipt_path' => $receiptPath,
+            'note' => $validated['note'] ?? null,
             'created_by' => Auth::id(),
         ]);
 
         return redirect()
             ->route('dashboard')
-            ->with('success', 'Expense created successfully with ' . count($processedItems) . ' items totaling $' . number_format($totalAmount, 2));
+            ->with('success', 'Expense recorded successfully.');
     }
 
     /**
@@ -110,7 +153,14 @@ class ExpenseController extends Controller
     public function edit(string $id)
     {
         $expense = Expense::findOrFail($id);
-        return view('expenses.edit', compact('expense'));
+        $vendors = Vendor::orderBy('name')->get(['id', 'name']);
+
+        return view('expenses.edit', [
+            'expense' => $expense,
+            'categories' => self::CATEGORY_OPTIONS,
+            'paymentMethods' => self::PAYMENT_METHOD_OPTIONS,
+            'vendors' => $vendors,
+        ]);
     }
 
     /**
@@ -120,58 +170,37 @@ class ExpenseController extends Controller
     {
         $expense = Expense::findOrFail($id);
 
-        $validated = $request->validate([
-            'category' => 'required|string',
-            'expense_date' => 'required|date',
-            'description' => 'nullable|string',
-            'items' => 'required|array|min:1',
-            'items.*.item_id' => 'required|exists:items,id',
-            'items.*.quantity' => 'required|numeric|min:0.01',
-            'items.*.unit_price' => 'required|numeric|min:0.01',
-            'items.*.invoice_number' => 'nullable|string',
-            'items.*.payment_method' => 'nullable|string',
-            'items.*.description' => 'nullable|string',
-            'items.*.receipt' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
-            'amount' => 'required|numeric|min:0.01',
-        ]);
+        $validated = $this->validateExpense($request);
 
-        // Process items
-        $processedItems = [];
-        $totalAmount = 0;
-
-        foreach ($validated['items'] as $index => $itemData) {
-            $item = Item::find($itemData['item_id']);
-            
-            $lineTotal = $itemData['quantity'] * $itemData['unit_price'];
-            $totalAmount += $lineTotal;
-
-            // Handle per-item receipt upload
-            $receiptPath = null;
-            if ($request->hasFile("items.{$index}.receipt")) {
-                $receiptPath = $request->file("items.{$index}.receipt")->store('receipts', 'public');
-            }
-
-            $processedItems[] = [
-                'item_id' => $item->id,
-                'name' => $item->name,
-                'vendor' => $item->vendor,
-                'quantity' => $itemData['quantity'],
-                'unit_price' => $itemData['unit_price'],
-                'line_total' => $lineTotal,
-                'invoice_number' => $itemData['invoice_number'] ?? null,
-                'payment_method' => $itemData['payment_method'] ?? null,
-                'description' => $itemData['description'] ?? null,
-                'receipt_path' => $receiptPath,
-            ];
+        $vendor = null;
+        if (! empty($validated['vendor_id'])) {
+            $vendor = Vendor::find($validated['vendor_id']);
         }
 
-        // Update the expense
+        $receiptPath = $expense->receipt_path;
+        if ($request->hasFile('proof')) {
+            if ($receiptPath) {
+                Storage::disk('public')->delete($receiptPath);
+            }
+            $receiptPath = $request->file('proof')->store('expenses', 'public');
+        }
+
+        $amount = round($validated['quantity'] * $validated['unit_price'], 2);
+
         $expense->update([
             'category' => $validated['category'],
             'expense_date' => $validated['expense_date'],
-            'description' => $validated['description'],
-            'amount' => $totalAmount,
-            'items' => $processedItems,
+            'description' => $validated['description'] ?? '',
+            'item_name' => $validated['item_name'],
+            'quantity' => $validated['quantity'],
+            'unit_price' => $validated['unit_price'],
+            'amount' => $amount,
+            'vendor_id' => $vendor?->id,
+            'vendor' => $vendor?->name,
+            'payment_method' => $validated['payment_method'],
+            'invoice_number' => $validated['invoice_number'] ?? null,
+            'receipt_path' => $receiptPath,
+            'note' => $validated['note'] ?? null,
         ]);
 
         return redirect()
@@ -196,5 +225,22 @@ class ExpenseController extends Controller
         return redirect()
             ->route('dashboard')
             ->with('success', 'Expense deleted successfully');
+    }
+
+    private function validateExpense(Request $request): array
+    {
+        return $request->validate([
+            'expense_date' => ['required', 'date'],
+            'category' => ['required', Rule::in(self::CATEGORY_OPTIONS)],
+            'item_name' => ['required', 'string', 'max:255'],
+            'quantity' => ['required', 'numeric', 'min:0.01'],
+            'unit_price' => ['required', 'numeric', 'min:0'],
+            'vendor_id' => ['nullable', 'exists:vendors,id'],
+            'payment_method' => ['required', Rule::in(self::PAYMENT_METHOD_OPTIONS)],
+            'invoice_number' => ['nullable', 'string', 'max:100'],
+            'description' => ['nullable', 'string', 'max:1000'],
+            'note' => ['nullable', 'string', 'max:1000'],
+            'proof' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'],
+        ]);
     }
 }

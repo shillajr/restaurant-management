@@ -11,12 +11,13 @@ A comprehensive restaurant management system with role-based access control, KPI
 - **Pending Approvals**: Count of requisitions awaiting approval
 
 ### 🚀 Quick Actions (Role-based)
-- **New Requisition** (Chef role): Submit new ingredient requests
-- **Purchase Order** (Purchaser role): Create purchase orders
-- **Add Expense** (Finance role): Record expenses
-- **View Reports** (Admin, Manager, Finance): Access P&L reports
+- **New Requisition** (Chef, Manager, Purchaser, Admin): Submit ingredient requests
+- **Purchase Order** (Purchaser, Finance, Manager, Admin): Create purchase orders
+- **Approve & Send POs** (Manager, Purchaser, Finance, Admin): Approve purchase orders and dispatch vendor WhatsApp alerts
+- **Add Expense** (Finance, Manager, Admin): Record expenses
+- **View Reports** (Admin, Manager, Finance, Purchaser): Access financial and operational reports
 - **Manage Payroll** (Admin, Finance): Process payroll
-- **Settings**: System configuration
+- **Settings** (Admin): System configuration
 
 ### 📊 Recent Requisitions Table
 - Real-time list of requisitions
@@ -47,11 +48,11 @@ All test accounts use the password: `password`
 | Role | Email | Permissions |
 |------|-------|-------------|
 | **Admin** | admin@restaurant.com | Full system access |
-| **Manager** | manager@restaurant.com | View all data, approve requisitions |
-| **Chef** | chef@restaurant.com | Create and view own requisitions |
-| **Purchaser** | purchaser@restaurant.com | Create purchase orders |
-| **Finance** | finance@restaurant.com | Manage expenses, view financials |
-| **Auditor** | auditor@restaurant.com | Read-only access to all records |
+| **Manager** | manager@restaurant.com | All features except payroll and settings; can approve POs with WhatsApp vendor sends |
+| **Chef** | chef@restaurant.com | Requisition management only |
+| **Purchaser** | purchaser@restaurant.com | All features except payroll, expenses, and settings |
+| **Finance** | finance@restaurant.com | All features except requisitions and settings |
+| **Auditor** | auditor@restaurant.com | Reports access only |
 
 ## Dashboard Views by Role
 
@@ -71,7 +72,7 @@ All test accounts use the password: `password`
 - Full financial KPIs
 - Expense management
 - Report access
-- Payroll management
+- Payroll management (Admin & Finance)
 
 ### Auditor Dashboard
 - Read-only view of all data

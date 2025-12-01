@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Item;
 use App\Models\ItemCategory;
 use App\Models\Vendor;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -13,9 +14,34 @@ class ItemController extends Controller
     /**
      * Display a listing of items.
      */
-    public function index()
+    public function index(Request $request)
     {
-        return redirect()->route('settings', ['tab' => 'items']);
+        $items = Item::orderBy('name')->get();
+        $vendors = Vendor::orderBy('name')->get();
+        $itemCategories = ItemCategory::orderBy('name')->get();
+
+        $editingItem = null;
+        if ($request->filled('edit_item')) {
+            $editingItem = $items->firstWhere('id', (int) $request->query('edit_item'));
+        }
+
+        $unitOptions = [
+            'piece',
+            'kg',
+            'liters',
+            'pack',
+            'box',
+            'tray',
+            'crate',
+        ];
+
+        return view('items.index', [
+            'items' => $items,
+            'vendors' => $vendors,
+            'itemCategories' => $itemCategories,
+            'editingItem' => $editingItem,
+            'unitOptions' => $unitOptions,
+        ]);
     }
 
     /**
@@ -27,7 +53,7 @@ class ItemController extends Controller
             'name' => 'required|string|max:255',
             'category' => 'required|string|max:255',
             'uom' => 'required|string|max:50',
-            'vendor' => 'required|string|max:255',
+            'vendor_id' => ['required', 'exists:vendors,id'],
             'price' => 'required|numeric|min:0',
             'status' => 'required|in:active,inactive',
             'stock' => 'nullable|numeric|min:0',
@@ -35,24 +61,27 @@ class ItemController extends Controller
             'description' => 'nullable|string',
         ]);
 
-        $validated['vendor'] = trim($validated['vendor']);
+        $vendor = Vendor::findOrFail($validated['vendor_id']);
         $validated['category'] = trim($validated['category']);
-
-        Vendor::firstOrCreate(
-            ['name' => $validated['vendor']],
-            ['is_active' => true]
-        );
 
         ItemCategory::firstOrCreate(
             ['name' => $validated['category']],
             ['status' => 'active']
         );
 
-        $item = Item::create($validated);
+        $item = Item::create([
+            'name' => $validated['name'],
+            'category' => $validated['category'],
+            'uom' => $validated['uom'],
+            'vendor' => $vendor->name,
+            'price' => $validated['price'],
+            'status' => $validated['status'],
+            'stock' => $validated['stock'] ?? null,
+            'reorder_level' => $validated['reorder_level'] ?? null,
+            'description' => $validated['description'] ?? null,
+        ]);
 
-        return redirect()->route('settings', ['tab' => 'items'])
-                ->with('success', 'Item created successfully!')
-                ->with('activeTab', 'items');
+        return $this->redirectAfterItemAction($request, 'Item created successfully!');
     }
 
     /**
@@ -66,7 +95,7 @@ class ItemController extends Controller
             'name' => 'required|string|max:255',
             'category' => 'required|string|max:255',
             'uom' => 'required|string|max:50',
-            'vendor' => 'required|string|max:255',
+            'vendor_id' => ['required', 'exists:vendors,id'],
             'price' => 'required|numeric|min:0',
             'status' => 'required|in:active,inactive',
             'stock' => 'nullable|numeric|min:0',
@@ -74,13 +103,8 @@ class ItemController extends Controller
             'description' => 'nullable|string',
         ]);
 
-        $validated['vendor'] = trim($validated['vendor']);
+        $vendor = Vendor::findOrFail($validated['vendor_id']);
         $validated['category'] = trim($validated['category']);
-
-        Vendor::firstOrCreate(
-            ['name' => $validated['vendor']],
-            ['is_active' => true]
-        );
 
         ItemCategory::firstOrCreate(
             ['name' => $validated['category']],
@@ -96,17 +120,25 @@ class ItemController extends Controller
             );
         }
 
-        $item->update($validated);
+        $item->update([
+            'name' => $validated['name'],
+            'category' => $validated['category'],
+            'uom' => $validated['uom'],
+            'vendor' => $vendor->name,
+            'price' => $validated['price'],
+            'status' => $validated['status'],
+            'stock' => $validated['stock'] ?? null,
+            'reorder_level' => $validated['reorder_level'] ?? null,
+            'description' => $validated['description'] ?? null,
+        ]);
 
-        return redirect()->route('settings', ['tab' => 'items'])
-                ->with('success', 'Item updated successfully!')
-                ->with('activeTab', 'items');
+        return $this->redirectAfterItemAction($request, 'Item updated successfully!');
     }
 
     /**
      * Remove the specified item.
      */
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
         $item = Item::findOrFail($id);
         
@@ -115,9 +147,7 @@ class ItemController extends Controller
         
         $item->delete();
 
-        return redirect()->route('settings', ['tab' => 'items'])
-                ->with('success', 'Item deleted successfully!')
-                ->with('activeTab', 'items');
+        return $this->redirectAfterItemAction($request, 'Item deleted successfully!');
     }
 
     /**
@@ -153,5 +183,20 @@ class ItemController extends Controller
                     ->get();
 
         return response()->json($items);
+    }
+
+    protected function redirectAfterItemAction(Request $request, string $message): RedirectResponse
+    {
+        if ($request->input('return_to') === 'items') {
+            return redirect()
+                ->route('items.index')
+                ->with('success', $message);
+        }
+
+        return redirect()
+            ->route('settings', ['tab' => 'products', 'product_section' => 'items'])
+            ->with('success', $message)
+            ->with('activeTab', 'products')
+            ->with('productSection', 'items');
     }
 }

@@ -7,6 +7,7 @@ return [
     ],
     'groups' => [
         'main' => 'Msingi',
+        'finance' => 'Fedha',
         'people' => 'Rasilimali Watu',
         'insights' => 'Takwimu',
         'system' => 'Mfumo',
@@ -16,6 +17,7 @@ return [
         'requisitions' => 'Maombi',
         'purchase_orders' => 'Maagizo ya Ununuzi',
         'expenses' => 'Gharama',
+        'financial_ledgers' => 'Deni na Mikopo',
         'reports' => 'Ripoti',
         'settings' => 'Mipangilio',
     ],

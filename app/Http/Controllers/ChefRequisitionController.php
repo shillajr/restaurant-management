@@ -3,12 +3,21 @@
 namespace App\Http\Controllers;
 
 use App\Models\ChefRequisition;
-use Illuminate\Http\Request;
 use App\Models\Item;
+use App\Models\User;
+use App\Services\SmsNotificationService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class ChefRequisitionController extends Controller
 {
+    protected SmsNotificationService $smsNotifications;
+
+    public function __construct(SmsNotificationService $smsNotifications)
+    {
+        $this->smsNotifications = $smsNotifications;
+    }
+
     /**
      * Display a listing of the resource.
      */
@@ -99,22 +108,7 @@ class ChefRequisitionController extends Controller
             'note' => 'nullable|string',
         ]);
 
-        // Normalize items to expected internal structure (add item name & unit alias)
-        $normalizedItems = collect($validated['items'])->map(function ($row) {
-            $itemModel = Item::find($row['item_id']);
-            return [
-                'item_id' => $row['item_id'],
-                'item' => $itemModel->name ?? ($row['item_id'] ?? 'Unknown'),
-                'vendor' => $row['vendor'] ?? ($itemModel->vendor ?? null),
-                'quantity' => (float)$row['quantity'],
-                'unit' => $row['uom'] ?? ($itemModel->uom ?? null),
-                'uom' => $row['uom'] ?? ($itemModel->uom ?? null),
-                'price' => (float)$row['price'],
-                'defaultPrice' => isset($row['default_price']) ? (float)$row['default_price'] : (float)($itemModel->price ?? $row['price']),
-                'priceEdited' => isset($row['price_edited']) ? ($row['price_edited'] === '1') : false,
-                'originalPrice' => isset($row['originalPrice']) ? (float)$row['originalPrice'] : (float)($itemModel->price ?? $row['price']),
-            ];
-        })->toArray();
+        $normalizedItems = $this->normalizeItems($validated['items']);
 
         $requisition = ChefRequisition::create([
             'chef_id' => Auth::id(),
@@ -128,6 +122,8 @@ class ChefRequisitionController extends Controller
             ->performedOn($requisition)
             ->causedBy(Auth::user())
             ->log('Chef requisition created');
+
+        $this->smsNotifications->sendRequisitionSubmittedNotifications($requisition, Auth::user());
 
         if (str_starts_with($request->path(), 'api')) {
             return response()->json($requisition->load('chef'), 201);
@@ -143,12 +139,44 @@ class ChefRequisitionController extends Controller
     public function show(Request $request, ChefRequisition $chefRequisition)
     {
         $chefRequisition->load(['chef', 'checker', 'purchaseOrder']);
+
+        $user = $request->user();
+        $canGeneratePurchaseOrder = $user && (
+            $user->can('approve purchase orders') ||
+            $user->can('approve requisitions')
+        );
+
+        $purchaserOptions = collect();
+
+        if ($canGeneratePurchaseOrder) {
+            $purchaserOptions = User::permission('send purchase orders')
+                ->orderBy('name')
+                ->get(['id', 'name'])
+                ->map(function (User $purchaser) {
+                    return [
+                        'id' => $purchaser->id,
+                        'name' => $purchaser->name,
+                    ];
+                });
+
+            if ($user && $purchaserOptions->doesntContain(fn ($option) => $option['id'] === $user->id)) {
+                $purchaserOptions->push([
+                    'id' => $user->id,
+                    'name' => $user->name,
+                ]);
+            }
+        }
         
         if ($request->expectsJson() || $request->wantsJson()) {
             return response()->json($chefRequisition);
         }
 
-        return view('chef-requisitions.show', compact('chefRequisition'));
+        return view('chef-requisitions.show', [
+            'chefRequisition' => $chefRequisition,
+            'purchaserOptions' => $purchaserOptions,
+            'canGeneratePurchaseOrder' => $canGeneratePurchaseOrder,
+            'defaultPurchaserId' => $user?->id,
+        ]);
     }
 
     /**
@@ -156,12 +184,21 @@ class ChefRequisitionController extends Controller
      */
     public function edit(ChefRequisition $chefRequisition)
     {
-        if ($chefRequisition->status !== 'pending') {
+        if (Auth::id() !== $chefRequisition->chef_id) {
             return redirect()->route('chef-requisitions.index')
-                ->with('error', 'Only pending requisitions can be edited.');
+                ->with('error', 'You are not allowed to modify this requisition.');
         }
-        
-        return view('chef-requisitions.edit', compact('chefRequisition'));
+
+        if (! in_array($chefRequisition->status, ['pending', 'changes_requested'], true)) {
+            return redirect()->route('chef-requisitions.index')
+                ->with('error', 'Only pending or change-requested requisitions can be edited.');
+        }
+
+        $chefRequisition->load(['chef']);
+
+        $isResubmission = $chefRequisition->status === 'changes_requested';
+
+        return view('chef-requisitions.edit', compact('chefRequisition', 'isResubmission'));
     }
 
     /**
@@ -169,33 +206,63 @@ class ChefRequisitionController extends Controller
      */
     public function update(Request $request, ChefRequisition $chefRequisition)
     {
-        if ($chefRequisition->status !== 'pending') {
+        if (Auth::id() !== $chefRequisition->chef_id) {
             return redirect()->route('chef-requisitions.index')
-                ->with('error', 'Only pending requisitions can be updated.');
+                ->with('error', 'You are not allowed to modify this requisition.');
+        }
+
+        if (! in_array($chefRequisition->status, ['pending', 'changes_requested'], true)) {
+            return redirect()->route('chef-requisitions.index')
+                ->with('error', 'Only pending or change-requested requisitions can be updated.');
         }
 
         $validated = $request->validate([
             'requested_for_date' => 'required|date|after:today',
             'items' => 'required|array|min:1',
-            'items.*.item' => 'required|string',
+            'items.*.item_id' => 'required|integer|exists:items,id',
             'items.*.quantity' => 'required|numeric|min:0.01',
-            'items.*.unit' => 'required|string',
+            'items.*.uom' => 'required|string',
+            'items.*.price' => 'required|numeric|min:0',
             'note' => 'nullable|string',
         ]);
 
-        $chefRequisition->update([
+        $normalizedItems = $this->normalizeItems($validated['items']);
+
+        $payload = [
             'requested_for_date' => $validated['requested_for_date'],
-            'items' => $validated['items'],
+            'items' => $normalizedItems,
             'note' => $validated['note'] ?? null,
-        ]);
+        ];
+
+        $isResubmission = $chefRequisition->status === 'changes_requested';
+
+        if ($isResubmission) {
+            $payload = array_merge($payload, [
+                'status' => 'pending',
+                'checker_id' => null,
+                'checked_at' => null,
+                'rejection_reason' => null,
+                'change_request' => null,
+            ]);
+        }
+
+        $chefRequisition->update($payload);
 
         activity()
             ->performedOn($chefRequisition)
             ->causedBy(Auth::user())
-            ->log('Chef requisition updated');
+            ->log($isResubmission ? 'Chef requisition resubmitted' : 'Chef requisition updated');
 
-        return redirect()->route('chef-requisitions.index')
-            ->with('success', 'Requisition updated successfully.');
+        if ($isResubmission) {
+            $this->smsNotifications->sendRequisitionSubmittedNotifications($chefRequisition, Auth::user());
+        }
+
+        $message = $isResubmission
+            ? 'Requisition resubmitted successfully.'
+            : 'Requisition updated successfully.';
+
+        return redirect()->route('chef-requisitions.show', $chefRequisition->id)
+            ->with('success', $message);
     }
 
     /**
@@ -243,11 +310,11 @@ class ChefRequisitionController extends Controller
      */
     public function approve(Request $request, ChefRequisition $chefRequisition)
     {
-        if ($chefRequisition->status !== 'pending') {
+        if (! in_array($chefRequisition->status, ['pending', 'changes_requested'], true)) {
             if (str_starts_with($request->path(), 'api')) {
-                return response()->json(['message' => 'Only pending requisitions can be approved.'], 422);
+                return response()->json(['message' => 'Only pending or change-requested requisitions can be approved.'], 422);
             }
-            return back()->with('error', 'Only pending requisitions can be approved.');
+            return back()->with('error', 'Only pending or change-requested requisitions can be approved.');
         }
 
         $validated = $request->validate([
@@ -260,12 +327,20 @@ class ChefRequisitionController extends Controller
                 'status' => 'approved',
                 'checker_id' => Auth::id(),
                 'checked_at' => now(),
+                'change_request' => null,
+                'rejection_reason' => null,
             ]);
 
             activity()
                 ->performedOn($chefRequisition)
                 ->causedBy(Auth::user())
                 ->log('Chef requisition approved');
+
+            $this->smsNotifications->sendRequisitionApprovedNotifications(
+                $chefRequisition,
+                Auth::user(),
+                $validated['approval_notes'] ?? null
+            );
 
             if (str_starts_with($request->path(), 'api')) {
                 return response()->json([
@@ -287,11 +362,11 @@ class ChefRequisitionController extends Controller
      */
     public function reject(Request $request, ChefRequisition $chefRequisition)
     {
-        if ($chefRequisition->status !== 'pending') {
+        if (! in_array($chefRequisition->status, ['pending', 'changes_requested'], true)) {
             if (str_starts_with($request->path(), 'api')) {
-                return response()->json(['message' => 'Only pending requisitions can be rejected.'], 422);
+                return response()->json(['message' => 'Only pending or change-requested requisitions can be rejected.'], 422);
             }
-            return back()->with('error', 'Only pending requisitions can be rejected.');
+            return back()->with('error', 'Only pending or change-requested requisitions can be rejected.');
         }
 
         $validated = $request->validate([
@@ -303,6 +378,7 @@ class ChefRequisitionController extends Controller
             'checker_id' => Auth::id(),
             'checked_at' => now(),
             'rejection_reason' => $validated['rejection_reason'],
+            'change_request' => null,
         ]);
 
         activity()
@@ -348,5 +424,44 @@ class ChefRequisitionController extends Controller
             ->log('Changes requested for chef requisition');
 
         return back()->with('success', 'Change request sent successfully.');
+    }
+
+    /**
+     * Normalize requisition items to the expected storage structure.
+     */
+    protected function normalizeItems(array $items): array
+    {
+        return collect($items)->map(function ($row) {
+            $itemId = isset($row['item_id']) ? (int)$row['item_id'] : (int)($row['itemId'] ?? 0);
+            $itemModel = $itemId ? Item::find($itemId) : null;
+
+            $price = isset($row['price']) ? (float)$row['price'] : (float)($itemModel->price ?? 0);
+            $defaultPrice = isset($row['default_price'])
+                ? (float)$row['default_price']
+                : (float)($itemModel->price ?? $price);
+
+            $priceEdited = isset($row['price_edited'])
+                ? filter_var($row['price_edited'], FILTER_VALIDATE_BOOLEAN)
+                : (round($price, 4) !== round($defaultPrice, 4));
+
+            $originalPrice = isset($row['originalPrice'])
+                ? (float)$row['originalPrice']
+                : (float)($itemModel->price ?? $price);
+
+            $unit = $row['uom'] ?? ($row['unit'] ?? ($itemModel->uom ?? null));
+
+            return [
+                'item_id' => $itemId,
+                'item' => $itemModel->name ?? ($row['item'] ?? ($row['item_name'] ?? 'Unknown Item')),
+                'vendor' => $row['vendor'] ?? ($itemModel->vendor ?? null),
+                'quantity' => isset($row['quantity']) ? (float)$row['quantity'] : 0.0,
+                'unit' => $unit,
+                'uom' => $unit,
+                'price' => $price,
+                'defaultPrice' => $defaultPrice,
+                'priceEdited' => $priceEdited,
+                'originalPrice' => $originalPrice,
+            ];
+        })->toArray();
     }
 }

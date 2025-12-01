@@ -21,8 +21,9 @@ class ItemCategoryController extends Controller
         ]);
 
         return redirect()
-            ->route('settings', ['tab' => 'items'])
+            ->route('settings', ['tab' => 'products', 'product_section' => 'items'])
             ->with('success', 'Category created successfully!')
-            ->with('activeTab', 'items');
+            ->with('activeTab', 'products')
+            ->with('productSection', 'items');
     }
 }

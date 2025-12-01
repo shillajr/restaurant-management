@@ -51,4 +51,26 @@ return [
             ],
         ],
     ],
+    'edit' => [
+        'title' => 'Hariri Ombi la Mpishi',
+        'description' => 'Sasisha ombi hili kabla ya kulituma tena kwa uidhinisho.',
+        'actions' => [
+            'cancel' => 'Ghairi',
+            'submit' => 'Hifadhi Mabadiliko',
+        ],
+        'change_request' => [
+            'heading' => 'Maoni ya Mthibitishaji',
+        ],
+    ],
+    'resubmit' => [
+        'title' => 'Tuma Tena Ombi la Mpishi',
+        'description' => 'Tekeleza mabadiliko uliyotakiwa na utume ombi kwa ukaguzi upya.',
+        'actions' => [
+            'cancel' => 'Ghairi',
+            'submit' => 'Tuma Tena kwa Uidhinisho',
+        ],
+        'change_request' => [
+            'heading' => 'Mabadiliko Yameombwa',
+        ],
+    ],
 ];

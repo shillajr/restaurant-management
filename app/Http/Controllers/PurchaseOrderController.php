@@ -2,13 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\PurchaseOrder;
 use App\Models\ChefRequisition;
+use App\Models\Entity;
+use App\Models\PurchaseOrder;
 use App\Models\Supplier;
+use App\Models\Vendor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use App\Services\SmsNotificationService;
+use App\Services\WhatsAppNotificationService;
 use Illuminate\Support\Facades\Mail;
 
 class PurchaseOrderController extends Controller
@@ -19,6 +24,11 @@ class PurchaseOrderController extends Controller
     public function index(Request $request)
     {
         $query = PurchaseOrder::with(['requisition.chef', 'approver', 'creator']);
+
+        $user = Auth::user();
+        if ($user && $user->can('send purchase orders') && ! $user->can('approve purchase orders')) {
+            $query->whereIn('workflow_status', ['approved', 'sent_to_vendor', 'completed']);
+        }
         
         // Filter by status
         if ($request->filled('status')) {
@@ -77,12 +87,19 @@ class PurchaseOrderController extends Controller
             'session_id' => session()->getId(),
         ]);
         
+        $user = $request->user();
+
+        if (! $user || (! $user->can('approve purchase orders') && ! $user->can('approve requisitions'))) {
+            abort(403, 'You are not authorized to generate purchase orders.');
+        }
+
         try {
             // Lean validation and creation from approved requisition
             $validated = $request->validate([
                 'requisition_id' => 'required|exists:chef_requisitions,id',
                 'requested_delivery_date' => 'nullable|date',
                 'notes' => 'nullable|string',
+                'assigned_to' => 'nullable|exists:users,id',
             ]);
 
             $req = ChefRequisition::with('purchaseOrder')->findOrFail($validated['requisition_id']);
@@ -109,13 +126,19 @@ class PurchaseOrderController extends Controller
             $subtotal = $items->sum(function ($i) { return (float)($i['quantity'] ?? 0) * (float)($i['price'] ?? 0); });
             $grandTotal = $subtotal;
 
+            $assignedToId = $validated['assigned_to'] ?? null;
+            if (! $assignedToId) {
+                $assignedToId = Auth::id();
+            }
+
             $po = PurchaseOrder::create([
                 'po_number' => PurchaseOrder::generatePONumber(),
                 'requisition_id' => $req->id,
                 'created_by' => $req->chef_id,
                 'approved_by' => Auth::id(),
                 'approved_at' => now(),
-                'assigned_to' => Auth::id(),
+                'generated_by' => Auth::id(),
+                'assigned_to' => $assignedToId,
                 'requested_delivery_date' => $validated['requested_delivery_date'] ?? $req->requested_for_date,
                 'items' => $items->map(function ($it) {
                     $qty = (float)($it['quantity'] ?? 0);
@@ -174,7 +197,24 @@ class PurchaseOrderController extends Controller
      */
     public function show(PurchaseOrder $purchaseOrder)
     {
-        $purchaseOrder->load(['requisition.chef', 'approver', 'assignedTo']);
+        $this->authorize('view', $purchaseOrder);
+
+        $relations = [
+            'requisition.chef',
+            'approver',
+            'assignedTo',
+            'generator',
+        ];
+
+        if (Schema::hasTable('financial_ledgers')) {
+            $relations[] = 'creditLedgers.payments.recorder';
+            $relations[] = 'creditLedgers.vendor';
+            $relations[] = 'creditLedgers.creditSale';
+        } else {
+            $purchaseOrder->setRelation('creditLedgers', collect());
+        }
+
+        $purchaseOrder->loadMissing($relations);
         
         // Get items grouped by vendor
         $itemsByVendor = $purchaseOrder->getItemsByVendor();
@@ -195,6 +235,18 @@ class PurchaseOrderController extends Controller
         $oldWorkflowStatus = $purchaseOrder->workflow_status;
         $newWorkflowStatus = $request->workflow_status;
 
+        $lockedTransitionMap = [
+            'approved' => ['approved', 'sent_to_vendor', 'cancelled'],
+            'sent_to_vendor' => ['sent_to_vendor', 'completed', 'cancelled'],
+            'completed' => ['completed'],
+            'cancelled' => ['cancelled'],
+        ];
+
+        if (isset($lockedTransitionMap[$oldWorkflowStatus]) && ! in_array($newWorkflowStatus, $lockedTransitionMap[$oldWorkflowStatus], true)) {
+            return redirect()->route('purchase-orders.show', $purchaseOrder)
+                ->with('error', 'Approved purchase orders cannot move back to an earlier stage. Cancel the PO instead.');
+        }
+
         $purchaseOrder->update([
             'workflow_status' => $newWorkflowStatus
         ]);
@@ -214,70 +266,327 @@ class PurchaseOrderController extends Controller
     }
 
     /**
-     * Approve PO and send vendor-specific notifications.
+     * Approve a purchase order and notify the purchasing team.
      */
     public function approve(Request $request, PurchaseOrder $purchaseOrder)
     {
-        $this->authorize('update', $purchaseOrder);
+        $this->authorize('approve', $purchaseOrder);
 
-        DB::transaction(function () use ($request, $purchaseOrder) {
+        $approver = Auth::user();
+        $approver->loadMissing('entity.notificationSettings', 'entity.integrationSettings');
+        $entity = $approver->entity;
+        $smsService = app(SmsNotificationService::class);
+        $whatsAppService = app(WhatsAppNotificationService::class);
+
+        DB::transaction(function () use ($purchaseOrder, $approver) {
             $purchaseOrder->update([
                 'status' => 'open',
                 'workflow_status' => 'approved',
+                'approved_by' => $approver->id,
+                'approved_at' => now(),
+            ]);
+        });
+
+        $purchaseOrder->refresh();
+
+        if ($entity) {
+            $this->notifyPurchasingTeam($entity, $approver, $purchaseOrder, $smsService, $whatsAppService);
+        }
+
+        activity()
+            ->performedOn($purchaseOrder)
+            ->causedBy($approver)
+            ->log('PO approved and purchasing team notified');
+
+        return redirect()->route('purchase-orders.show', $purchaseOrder)
+            ->with('success', 'PO approved. Purchasing team notified.');
+    }
+
+    /**
+     * Dispatch an approved purchase order to vendors.
+     */
+    public function sendToVendors(Request $request, PurchaseOrder $purchaseOrder)
+    {
+        $this->authorize('send', $purchaseOrder);
+
+        if ($purchaseOrder->workflow_status !== 'approved') {
+            return redirect()->route('purchase-orders.show', $purchaseOrder)
+                ->with('error', 'Only approved purchase orders can be sent to vendors.');
+        }
+
+        if ((int) Auth::id() === (int) ($purchaseOrder->generated_by ?? 0)) {
+            return redirect()->route('purchase-orders.show', $purchaseOrder)
+                ->with('error', 'A different team member must send this purchase order to the vendor.');
+        }
+
+        $sender = Auth::user();
+        $sender->loadMissing('entity.notificationSettings', 'entity.integrationSettings');
+        $entity = $sender->entity;
+        $whatsAppService = app(WhatsAppNotificationService::class);
+
+        DB::transaction(function () use ($purchaseOrder) {
+            $purchaseOrder->update([
+                'workflow_status' => 'sent_to_vendor',
+            ]);
+        });
+
+        $purchaseOrder->refresh();
+        $this->notifyVendors($purchaseOrder, $sender, $entity, $whatsAppService);
+
+        activity()
+            ->performedOn($purchaseOrder)
+            ->causedBy($sender)
+            ->log('PO sent to vendors');
+
+        return redirect()->route('purchase-orders.show', $purchaseOrder)
+            ->with('success', 'PO sent to vendors successfully.');
+    }
+
+    /**
+     * Notify the purchasing contacts via SMS, WhatsApp, and email.
+     */
+    protected function notifyPurchasingTeam(?Entity $entity, $approver, PurchaseOrder $purchaseOrder, SmsNotificationService $smsService, WhatsAppNotificationService $whatsAppService): void
+    {
+        if (! $entity) {
+            return;
+        }
+
+        $notifications = $entity->notificationSettings;
+
+        if (! $notifications || ! $notifications->notify_purchase_orders) {
+            return;
+        }
+
+        $emails = collect($notifications->purchase_order_notification_emails ?? [])->filter();
+        $phones = collect($notifications->purchase_order_notification_phones ?? [])->filter();
+
+        if ($emails->isEmpty() && $phones->isEmpty()) {
+            return;
+        }
+
+        $vendorCount = count($purchaseOrder->getItemsByVendor());
+        $totalFormatted = number_format((float) $purchaseOrder->grand_total, 2);
+        $poNumber = $purchaseOrder->po_number;
+
+        $smsMessage = "PO {$poNumber} approved by {$approver->name}. Total {$totalFormatted}. Please log in to send to vendors.";
+        $whatsAppMessage = implode("\n", [
+            "PO {$poNumber} has been approved and is ready to send to vendors.",
+            'Approved by: ' . $approver->name,
+            'Vendors: ' . $vendorCount,
+            'Total: ' . $totalFormatted,
+            '',
+            'Log in to the dashboard to dispatch the PO.',
+        ]);
+
+        foreach ($phones as $phone) {
+            $smsService->sendPurchaseOrderMessage($entity, $phone, $smsMessage);
+            $whatsAppService->sendPurchaseOrderMessage($entity, $phone, $whatsAppMessage);
+        }
+
+        if ($emails->isNotEmpty()) {
+            $emailBody = implode("\n", [
+                "Purchase Order {$poNumber} has been approved.",
+                'Approved by: ' . $approver->name,
+                'Total Amount: ' . $totalFormatted,
+                'Vendors: ' . $vendorCount,
+                '',
+                'Sign in to the dashboard to review and send the PO to vendors.',
             ]);
 
-            // Send emails to each vendor with their section
-            $itemsByVendor = $purchaseOrder->getItemsByVendor();
-            foreach ($itemsByVendor as $vendorSection) {
-                $vendorName = $vendorSection['vendor_name'];
-                // Attempt to find vendor contact info by name
-                $contact = \App\Models\Vendor::where('name', $vendorName)->first();
-                if ($contact && $contact->email) {
-                    $lines = [];
-                    foreach ($vendorSection['items'] as $it) {
-                        $lines[] = sprintf("- %s | Qty: %s %s | Unit: %0.2f | Line: %0.2f",
-                            $it['item'] ?? ($it['item_id'] ?? 'Item'),
-                            $it['quantity'] ?? 0,
-                            $it['uom'] ?? ($it['unit'] ?? ''),
-                            (float)($it['price'] ?? 0),
-                            (float)($it['price'] ?? 0) * (float)($it['quantity'] ?? 0)
-                        );
+            foreach ($emails as $email) {
+                Mail::raw($emailBody, function ($message) use ($email, $poNumber) {
+                    $message->to($email)
+                        ->subject('Purchase Order ' . $poNumber . ' Ready for Dispatch');
+                });
+            }
+        }
+    }
+
+    /**
+     * Notify vendors (email + WhatsApp) when a purchaser dispatches a PO.
+     */
+    protected function notifyVendors(PurchaseOrder $purchaseOrder, $sender, ?Entity $entity, WhatsAppNotificationService $whatsAppService): void
+    {
+        $itemsByVendor = $purchaseOrder->getItemsByVendor();
+
+        if (empty($itemsByVendor)) {
+            return;
+        }
+
+        $vendorNames = collect($itemsByVendor)
+            ->pluck('vendor_name')
+            ->filter()
+            ->unique()
+            ->all();
+
+        $vendorsByName = Vendor::query()
+            ->whereIn('name', $vendorNames)
+            ->get()
+            ->keyBy(fn (Vendor $vendor) => strtolower($vendor->name));
+
+        $fallbackVendor = $purchaseOrder->supplier_id
+            ? Vendor::find($purchaseOrder->supplier_id)
+            : null;
+
+        foreach ($itemsByVendor as $vendorSection) {
+            $vendorName = $vendorSection['vendor_name'] ?? null;
+            $vendor = null;
+
+            if ($vendorName) {
+                $vendor = $vendorsByName->get(strtolower($vendorName));
+            }
+
+            if (! $vendor && $fallbackVendor) {
+                $vendor = $fallbackVendor;
+            }
+
+            $displayName = $vendor?->name ?? ($vendorName ?: 'Vendor');
+
+            $lines = collect($vendorSection['items'] ?? [])
+                ->values()
+                ->map(function (array $item, int $index) {
+                    $quantity = (float) ($item['quantity'] ?? 0);
+                    $unit = trim((string) ($item['uom'] ?? ($item['unit'] ?? '')));
+                    $unitSuffix = $unit !== '' ? ' ' . $unit : '';
+                    $price = (float) ($item['price'] ?? 0);
+                    $lineTotal = $price * $quantity;
+
+                    return sprintf(
+                        '%d) %s | Qty: %s%s | Unit: %s | Line: %s',
+                        $index + 1,
+                        $item['item'] ?? ($item['item_id'] ?? 'Item'),
+                        $this->formatQuantity($quantity),
+                        $unitSuffix,
+                        $this->formatMoney($price),
+                        $this->formatMoney($lineTotal)
+                    );
+                })
+                ->all();
+
+            if ($vendor && $vendor->email) {
+                $emailLines = [
+                    "Dear {$displayName},",
+                    '',
+                    'Please find your purchase order details below:',
+                    "PO Number: {$purchaseOrder->po_number}",
+                    "Linked Requisition: {$purchaseOrder->requisition_id}",
+                    'Sent By: ' . $sender->name,
+                ];
+
+                if (! empty($lines)) {
+                    $emailLines[] = '';
+                    $emailLines[] = 'Items:';
+                    foreach ($lines as $line) {
+                        $emailLines[] = $line;
                     }
-                    $body = implode("\n", [
-                        "Dear {$vendorName},",
-                        "",
-                        "Please find your approved Purchase Order section:",
-                        "PO Number: {$purchaseOrder->po_number}",
-                        "Linked Requisition: {$purchaseOrder->requisition_id}",
-                        "Approved Date: " . now()->toDateTimeString(),
-                        "",
-                        "Items:",
-                        implode("\n", $lines),
-                        "",
-                        sprintf("Vendor Subtotal: %0.2f", (float)$vendorSection['vendor_subtotal']),
-                        "",
-                        "Kindly confirm and arrange delivery as per instructions.",
-                        "Regards,",
-                        Auth::user()->name,
-                    ]);
-                    Mail::raw($body, function ($message) use ($contact, $purchaseOrder, $vendorName) {
-                        $message->to($contact->email, $vendorName)
-                            ->subject('Purchase Order ' . $purchaseOrder->po_number . ' - Approved');
-                    });
+                }
+
+                $emailLines[] = '';
+                $emailLines[] = 'Subtotal: ' . $this->formatMoney((float) ($vendorSection['vendor_subtotal'] ?? 0));
+                $emailLines[] = '';
+                $emailLines[] = 'Kindly confirm receipt and arrange delivery as instructed.';
+                $emailLines[] = 'Regards,';
+                $emailLines[] = $sender->name;
+
+                $body = implode("\n", $emailLines);
+
+                Mail::raw($body, function ($message) use ($vendor, $purchaseOrder, $displayName) {
+                    $message->to($vendor->email, $displayName)
+                        ->subject('Purchase Order ' . $purchaseOrder->po_number . ' Details');
+                });
+            }
+
+            $phones = $this->extractVendorPhones($vendor);
+
+            if (! $entity || empty($phones)) {
+                continue;
+            }
+
+            $messageLines = [
+                "Purchase Order {$purchaseOrder->po_number} for {$displayName}",
+            ];
+
+            if ($purchaseOrder->requisition_id) {
+                $messageLines[] = 'Requisition: ' . $purchaseOrder->requisition_id;
+            }
+
+            $messageLines[] = 'Sent by: ' . $sender->name;
+
+            if (! empty($lines)) {
+                $messageLines[] = '';
+                $messageLines[] = 'Items:';
+                foreach ($lines as $line) {
+                    $messageLines[] = $line;
                 }
             }
 
-            // After sending vendor emails, mark as sent_to_vendor
-            $purchaseOrder->update(['workflow_status' => 'sent_to_vendor']);
+            $messageLines[] = '';
+            $messageLines[] = 'Subtotal: ' . $this->formatMoney((float) ($vendorSection['vendor_subtotal'] ?? 0));
+            $messageLines[] = '';
+            $messageLines[] = 'Please confirm receipt once you have this order.';
 
-            activity()
-                ->performedOn($purchaseOrder)
-                ->causedBy(Auth::user())
-                ->log('PO approved and vendor notifications sent');
-        });
+            $whatsAppMessage = implode("\n", $messageLines);
 
-        return redirect()->route('purchase-orders.show', $purchaseOrder)
-            ->with('success', 'PO approved and vendor notifications sent.');
+            foreach ($phones as $phone) {
+                $whatsAppService->sendPurchaseOrderMessage($entity, $phone, $whatsAppMessage);
+            }
+        }
+    }
+
+    /**
+     * Extract the vendor's phone numbers as an array.
+     */
+    protected function extractVendorPhones(?Vendor $vendor): array
+    {
+        if (! $vendor || ! $vendor->is_active) {
+            return [];
+        }
+
+        $raw = $vendor->phone;
+        $numbers = [];
+
+        if (is_array($raw)) {
+            $numbers = $raw;
+        } elseif (is_string($raw)) {
+            $trimmed = trim($raw);
+
+            if ($trimmed !== '' && str_starts_with($trimmed, '[') && str_ends_with($trimmed, ']')) {
+                $decoded = json_decode($trimmed, true);
+
+                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                    $numbers = $decoded;
+                }
+            }
+
+            if (empty($numbers)) {
+                $numbers = preg_split('/[,\\n;\\/|]+/', $raw) ?: [];
+            }
+        }
+
+        return collect($numbers)
+            ->map(function ($value) {
+                if (is_string($value) || is_numeric($value)) {
+                    return trim((string) $value);
+                }
+
+                return null;
+            })
+            ->filter(fn ($value) => $value !== '')
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    protected function formatQuantity(float $quantity): string
+    {
+        $formatted = number_format($quantity, 2, '.', '');
+
+        return rtrim(rtrim($formatted, '0'), '.') ?: '0';
+    }
+
+    protected function formatMoney(float $amount): string
+    {
+        return number_format($amount, 2, '.', '');
     }
 
     /**
@@ -286,6 +595,11 @@ class PurchaseOrderController extends Controller
     public function reject(Request $request, PurchaseOrder $purchaseOrder)
     {
         $this->authorize('update', $purchaseOrder);
+
+        if (in_array($purchaseOrder->workflow_status, ['approved', 'sent_to_vendor', 'completed', 'cancelled'], true)) {
+            return redirect()->route('purchase-orders.show', $purchaseOrder)
+                ->with('error', 'Approved purchase orders cannot be rejected. Cancel the PO instead.');
+        }
 
         $validated = $request->validate([
             'rejection_reason' => 'required|string|max:1000',
@@ -319,6 +633,11 @@ class PurchaseOrderController extends Controller
     public function returnForChanges(Request $request, PurchaseOrder $purchaseOrder)
     {
         $this->authorize('update', $purchaseOrder);
+
+        if (in_array($purchaseOrder->workflow_status, ['approved', 'sent_to_vendor', 'completed', 'cancelled'], true)) {
+            return redirect()->route('purchase-orders.show', $purchaseOrder)
+                ->with('error', 'Approved purchase orders cannot be returned for changes. Cancel the PO instead.');
+        }
 
         $validated = $request->validate([
             'return_reason' => 'required|string|max:1000',
@@ -375,7 +694,7 @@ class PurchaseOrderController extends Controller
         }
 
         $validated = $request->validate([
-            'supplier_id' => 'nullable|exists:suppliers,id',
+            'supplier_id' => 'nullable|exists:vendors,id',
             'items' => 'required|array|min:1',
             'items.*.item' => 'required|string',
             'items.*.quantity' => 'required|numeric|min:0.01',
@@ -440,12 +759,16 @@ class PurchaseOrderController extends Controller
     {
         $this->authorize('markPurchased', $purchaseOrder);
         
-        if ($purchaseOrder->status === 'completed') {
+        if ($purchaseOrder->status === 'completed' || $purchaseOrder->workflow_status === 'completed') {
             return back()->with('error', 'This purchase order is already marked as completed.');
         }
 
+        if ($purchaseOrder->workflow_status !== 'sent_to_vendor') {
+            return back()->with('error', 'Send this purchase order to the vendor before recording the purchase details.');
+        }
+
         $validated = $request->validate([
-            'supplier_id' => 'required|exists:suppliers,id',
+            'supplier_id' => 'required|exists:vendors,id',
             'invoice_number' => 'required|string|max:100',
             'total_amount' => 'required|numeric|min:0',
             'receipt' => 'nullable|file|mimes:jpeg,jpg,png,pdf|max:5120',
@@ -463,18 +786,23 @@ class PurchaseOrderController extends Controller
                 'total_amount' => $validated['total_amount'],
                 'receipt_path' => $receiptPath,
                 'purchased_at' => $validated['purchased_date'] ?? now(),
-                'status' => 'received'
+                'status' => 'closed',
+                'workflow_status' => 'completed',
             ]);
 
-            // Create expense record
+            // Create expense record tied to this purchase order
+            $primaryVendor = collect($purchaseOrder->items ?? [])->pluck('vendor')->first();
+
             $purchaseOrder->expense()->create([
-                'ledger_code' => 'PURCHASE',
+                'created_by' => Auth::id(),
+                'category' => 'Purchases',
+                'vendor' => $primaryVendor,
+                'description' => 'Purchase Order #' . ($purchaseOrder->po_number ?? $purchaseOrder->id) . ' - Invoice: ' . $validated['invoice_number'],
                 'amount' => $validated['total_amount'],
-                'date' => $validated['purchased_date'] ?? now(),
-                'description' => 'Purchase Order #' . $purchaseOrder->id . ' - Invoice: ' . $validated['invoice_number'],
-                'receipt_url' => $receiptPath,
-                'approved_by' => Auth::id(),
-                'approved_at' => now()
+                'expense_date' => $validated['purchased_date'] ?? now(),
+                'invoice_number' => $validated['invoice_number'],
+                'receipt_path' => $receiptPath,
+                'items' => $purchaseOrder->items,
             ]);
 
             activity()
@@ -495,6 +823,60 @@ class PurchaseOrderController extends Controller
         }
 
         return back()->with('success', 'Purchase marked as completed and expense recorded.');
+    }
+
+    /**
+     * Quick completion action for purchasers when detailed expense entry is not required.
+     */
+    public function markCompleted(Request $request, PurchaseOrder $purchaseOrder)
+    {
+        $this->authorize('markPurchased', $purchaseOrder);
+
+        if (in_array($purchaseOrder->workflow_status, ['completed'], true)) {
+            return back()->with('info', 'This purchase order is already completed.');
+        }
+
+        if ($purchaseOrder->workflow_status !== 'sent_to_vendor') {
+            return back()->with('error', 'Send this purchase order to the vendor before marking it as completed.');
+        }
+
+        DB::transaction(function () use ($purchaseOrder) {
+            $primaryVendor = collect($purchaseOrder->items ?? [])->pluck('vendor')->first();
+            $calculatedAmount = $purchaseOrder->total_amount
+                ?? ($purchaseOrder->grand_total
+                    ?? collect($purchaseOrder->items ?? [])->sum(function ($item) {
+                        return ($item['price'] ?? 0) * ($item['quantity'] ?? 0);
+                    }));
+            $purchasedAt = $purchaseOrder->purchased_at ?? now();
+
+            $purchaseOrder->update([
+                'status' => 'closed',
+                'workflow_status' => 'completed',
+                'purchased_at' => $purchasedAt,
+                'total_amount' => $calculatedAmount,
+            ]);
+
+            if (! $purchaseOrder->expense) {
+                $purchaseOrder->expense()->create([
+                    'created_by' => Auth::id(),
+                    'category' => 'Purchases',
+                    'vendor' => $primaryVendor,
+                    'description' => 'Purchase Order #' . ($purchaseOrder->po_number ?? $purchaseOrder->id) . ' completed.',
+                    'amount' => $calculatedAmount ?? 0,
+                    'expense_date' => $purchasedAt,
+                    'invoice_number' => $purchaseOrder->invoice_number,
+                    'receipt_path' => $purchaseOrder->receipt_path,
+                    'items' => $purchaseOrder->items,
+                ]);
+            }
+
+            activity()
+                ->performedOn($purchaseOrder)
+                ->causedBy(Auth::user())
+                ->log('Purchase order marked as completed');
+        });
+
+        return back()->with('success', 'Purchase order marked as completed.');
     }
 
     /**

@@ -3,7 +3,55 @@
 @section('title', 'Purchase Order #'.$purchaseOrder->po_number)
 
 @section('content')
-<div class="px-4 py-8 sm:px-6 lg:px-10" x-data="{ showReturnModal: false, showRejectModal: false, returnReason: '', rejectionReason: '' }">
+@php
+    $currentUser = auth()->user();
+    $isPurchaserOnly = false;
+    $canApprovePo = false;
+    $canSendPo = false;
+    $sendPoPermissionMissing = false;
+    $approvePoPermissionMissing = false;
+    $canApproveViaRequisitionPermission = false;
+    $canMarkPurchased = false;
+    $isSentOrCompleted = in_array($purchaseOrder->workflow_status, ['sent_to_vendor', 'completed'], true);
+    $isGenerator = $currentUser && (int) ($purchaseOrder->generated_by ?? 0) === (int) $currentUser->id;
+
+    if ($currentUser && method_exists($currentUser, 'can')) {
+        try {
+            $canApprovePo = $currentUser->can('approve purchase orders');
+        } catch (\Throwable $e) {
+            $approvePoPermissionMissing = true;
+            $canApprovePo = false;
+        }
+
+        if (! $canApprovePo) {
+            try {
+                $canApproveViaRequisitionPermission = $currentUser->can('approve requisitions');
+            } catch (\Throwable $e) {
+                $canApproveViaRequisitionPermission = false;
+            }
+
+            if ($canApproveViaRequisitionPermission) {
+                $canApprovePo = true;
+            }
+        }
+
+        try {
+            $canSendPo = $currentUser->can('send purchase orders');
+        } catch (\Throwable $e) {
+            $sendPoPermissionMissing = true;
+            $canSendPo = false;
+        }
+
+        try {
+            $canMarkPurchased = $currentUser->can('mark purchased');
+        } catch (\Throwable $e) {
+            $canMarkPurchased = false;
+        }
+        $isPurchaserOnly = $canSendPo && ! $canApprovePo;
+    }
+@endphp
+
+<div class="px-4 py-8 sm:px-6 lg:px-10" x-data="{ showDeleteModal: false, deleteReason: '' }">
     <div class="mx-auto max-w-7xl">
         <!-- Header -->
         <div class="mb-6">
@@ -86,6 +134,174 @@
                         <label class="block text-sm font-medium text-gray-500">Notes</label>
                         <p class="mt-1 text-sm text-gray-900">{{ $purchaseOrder->notes }}</p>
                     </div>
+                    @endif
+                </div>
+
+                <!-- Credit Ledger Overview -->
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+                        <div>
+                            <h2 class="text-lg font-semibold text-gray-900">Credit &amp; Payments</h2>
+                            <p class="text-sm text-gray-500">Track outstanding balances and repayment activity tied to this PO.</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xs uppercase text-gray-500">Outstanding Balance</p>
+                            <p class="text-2xl font-bold text-indigo-600">{{ currency_format($purchaseOrder->credit_outstanding_amount ?? 0) }}</p>
+                        </div>
+                    </div>
+
+                    @php
+                        $ledgers = $purchaseOrder->creditLedgers->sortByDesc('opened_at');
+                        $totalPrincipal = $ledgers->sum('principal_amount');
+                        $totalPaid = $ledgers->sum('paid_amount');
+                        $totalOutstanding = $ledgers->sum('outstanding_amount');
+                        $openCount = $ledgers->where('status', \App\Models\FinancialLedger::STATUS_OPEN)->count();
+                        $closedCount = $ledgers->where('status', \App\Models\FinancialLedger::STATUS_CLOSED)->count();
+                        $nextReminder = $ledgers->whereNotNull('next_reminder_due_at')->sortBy('next_reminder_due_at')->first();
+                    @endphp
+
+                    @if($ledgers->isEmpty())
+                        <div class="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-6 text-sm text-gray-500">
+                            No credit ledgers are linked to this purchase order yet. Outstanding balances from vendor credit will appear here once recorded.
+                        </div>
+                    @else
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div class="bg-indigo-50 border border-indigo-100 rounded-lg p-4">
+                                <p class="text-xs font-semibold uppercase text-indigo-700">Total Principal</p>
+                                <p class="text-xl font-bold text-indigo-900">{{ currency_format($totalPrincipal) }}</p>
+                            </div>
+                            <div class="bg-emerald-50 border border-emerald-100 rounded-lg p-4">
+                                <p class="text-xs font-semibold uppercase text-emerald-700">Total Paid</p>
+                                <p class="text-xl font-bold text-emerald-900">{{ currency_format($totalPaid) }}</p>
+                            </div>
+                            <div class="bg-amber-50 border border-amber-100 rounded-lg p-4">
+                                <p class="text-xs font-semibold uppercase text-amber-700">Outstanding</p>
+                                <p class="text-xl font-bold text-amber-900">{{ currency_format($totalOutstanding) }}</p>
+                            </div>
+                            <div class="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                                <p class="text-xs font-semibold uppercase text-slate-600">Ledgers</p>
+                                <p class="text-xl font-bold text-slate-900">{{ $ledgers->count() }} total</p>
+                                <p class="text-xs text-slate-500">{{ $openCount }} open · {{ $closedCount }} closed</p>
+                                @if($nextReminder)
+                                    <p class="text-xs text-slate-500 mt-1">Next reminder {{ $nextReminder->next_reminder_due_at?->format('M d, Y') }}</p>
+                                @endif
+                            </div>
+                        </div>
+
+                        <div class="mt-6 overflow-x-auto">
+                            @php
+                                $statusBadges = [
+                                    \App\Models\FinancialLedger::STATUS_OPEN => 'bg-amber-100 text-amber-800',
+                                    \App\Models\FinancialLedger::STATUS_CLOSED => 'bg-emerald-100 text-emerald-800',
+                                    \App\Models\FinancialLedger::STATUS_ARCHIVED => 'bg-slate-200 text-slate-700',
+                                ];
+                            @endphp
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ledger</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor / Contact</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                        <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Principal</th>
+                                        <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Paid</th>
+                                        <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Outstanding</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Opened</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Next Reminder</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    @foreach($ledgers as $ledger)
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-4 py-3 text-sm font-semibold text-gray-900">
+                                                {{ $ledger->ledger_code }}
+                                                @if($ledger->creditSale)
+                                                    <span class="block text-xs text-gray-500">Credit sale #{{ $ledger->credit_sale_id }}</span>
+                                                @endif
+                                            </td>
+                                            <td class="px-4 py-3 text-sm text-gray-900">
+                                                <span class="font-medium">{{ $ledger->vendor_name ?? $ledger->vendor?->name ?? 'Vendor not recorded' }}</span>
+                                                @if($ledger->contact_email || $ledger->contact_phone)
+                                                    <span class="block text-xs text-gray-500">
+                                                        {{ $ledger->contact_email ? '✉ '.$ledger->contact_email : '' }}
+                                                        @if($ledger->contact_email && $ledger->contact_phone)
+                                                            &nbsp;•&nbsp;
+                                                        @endif
+                                                        {{ $ledger->contact_phone ? '☎ '.$ledger->contact_phone : '' }}
+                                                    </span>
+                                                @endif
+                                            </td>
+                                            <td class="px-4 py-3 text-sm">
+                                                @php
+                                                    $statusClass = $statusBadges[$ledger->status] ?? 'bg-gray-100 text-gray-800';
+                                                @endphp
+                                                <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $statusClass }}">
+                                                    {{ ucfirst($ledger->status) }}
+                                                </span>
+                                                @if($ledger->archived_at)
+                                                    <span class="block text-xs text-gray-400">Archived {{ $ledger->archived_at->format('M d, Y') }}</span>
+                                                @elseif($ledger->closed_at)
+                                                    <span class="block text-xs text-gray-400">Closed {{ $ledger->closed_at->format('M d, Y') }}</span>
+                                                @endif
+                                            </td>
+                                            <td class="px-4 py-3 text-sm text-right text-gray-900">{{ currency_format($ledger->principal_amount) }}</td>
+                                            <td class="px-4 py-3 text-sm text-right text-gray-900">{{ currency_format($ledger->paid_amount) }}</td>
+                                            <td class="px-4 py-3 text-sm text-right font-semibold text-gray-900">{{ currency_format($ledger->outstanding_amount) }}</td>
+                                            <td class="px-4 py-3 text-sm text-gray-900">{{ $ledger->opened_at?->format('M d, Y') ?? '—' }}</td>
+                                            <td class="px-4 py-3 text-sm text-gray-900">{{ $ledger->next_reminder_due_at?->format('M d, Y') ?? 'Not scheduled' }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+
+                        @php
+                            $ledgersWithPayments = $ledgers->filter(fn ($ledger) => $ledger->payments->isNotEmpty());
+                        @endphp
+
+                        @if($ledgersWithPayments->isNotEmpty())
+                            <div class="mt-6 space-y-4">
+                                <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Payment Activity</h3>
+                                @foreach($ledgersWithPayments as $ledger)
+                                    <div class="border border-gray-200 rounded-lg">
+                                        <div class="bg-gray-50 px-4 py-3 flex items-center justify-between">
+                                            <div>
+                                                <p class="text-sm font-semibold text-gray-900">Ledger {{ $ledger->ledger_code }}</p>
+                                                <p class="text-xs text-gray-500">{{ $ledger->vendor_name ?? $ledger->vendor?->name ?? 'Vendor not recorded' }}</p>
+                                            </div>
+                                            <div class="text-sm text-gray-600">
+                                                Paid {{ currency_format($ledger->paid_amount) }} of {{ currency_format($ledger->principal_amount) }}
+                                            </div>
+                                        </div>
+                                        <div class="divide-y divide-gray-200">
+                                            @foreach($ledger->payments->sortByDesc('paid_at') as $payment)
+                                                <div class="px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                                    <div>
+                                                        <p class="text-sm font-medium text-gray-900">{{ currency_format($payment->amount) }}</p>
+                                                        <p class="text-xs text-gray-500">{{ $payment->paid_at?->format('M d, Y') ?? 'Date not recorded' }}</p>
+                                                    </div>
+                                                    <div class="text-xs text-gray-500">
+                                                        @if($payment->payment_method)
+                                                            Method: {{ ucfirst($payment->payment_method) }}
+                                                        @endif
+                                                        @if($payment->reference)
+                                                            <span class="sm:ml-3 block sm:inline">Ref: {{ $payment->reference }}</span>
+                                                        @endif
+                                                    </div>
+                                                    <div class="text-xs text-gray-500 sm:text-right">
+                                                        @if($payment->recorder)
+                                                            Recorded by {{ $payment->recorder->name }}
+                                                        @endif
+                                                        @if($payment->notes)
+                                                            <span class="block text-gray-400 mt-1">&ldquo;{{ \Illuminate\Support\Str::limit($payment->notes, 60) }}&rdquo;</span>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
                     @endif
                 </div>
 
@@ -222,45 +438,133 @@
                 <div class="bg-white rounded-lg shadow-sm p-6 no-print">
                     <h3 class="text-lg font-semibold text-gray-900 mb-4">Actions</h3>
                     <div class="space-y-3">
-                        <form method="POST" action="{{ route('purchase-orders.approve', $purchaseOrder->id) }}">
-                            @csrf
-                            <button type="submit" class="block w-full text-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                                ✅ Approve PO & Send to Vendors
+                        @if($purchaseOrder->workflow_status === 'approved')
+                            @if($canSendPo && ! $isGenerator)
+                                <form method="POST" action="{{ route('purchase-orders.send', $purchaseOrder->id) }}">
+                                    @csrf
+                                    <button type="submit" class="block w-full text-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                                        Send to Vendor
+                                    </button>
+                                </form>
+                            @elseif($canSendPo && $isGenerator)
+                                <div class="px-4 py-3 border border-blue-200 bg-blue-50 text-blue-800 rounded-lg text-sm">
+                                    Another team member must send this PO to vendors.
+                                </div>
+                            @elseif($sendPoPermissionMissing)
+                                <button type="button" disabled
+                                        class="block w-full text-center px-4 py-2 bg-blue-200 text-blue-700 rounded-lg cursor-not-allowed"
+                                        title="The 'send purchase orders' permission is not configured">
+                                    Send to Vendor
+                                </button>
+                            @else
+                                <button type="button" disabled
+                                        class="block w-full text-center px-4 py-2 bg-blue-200 text-blue-700 rounded-lg cursor-not-allowed"
+                                        title="You do not have permission to send purchase orders">
+                                    Send to Vendor
+                                </button>
+                            @endif
+                        @elseif($purchaseOrder->workflow_status === 'sent_to_vendor')
+                            @if($canMarkPurchased)
+                                <form method="POST" action="{{ route('purchase-orders.complete', $purchaseOrder->id) }}">
+                                    @csrf
+                                    <button type="submit" class="block w-full text-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                                        Mark Completed
+                                    </button>
+                                </form>
+                            @else
+                                <div class="px-4 py-3 border border-emerald-200 bg-emerald-50 text-emerald-800 rounded-lg text-sm">
+                                    Waiting for a manager to confirm delivery.
+                                </div>
+                            @endif
+                        @elseif($purchaseOrder->workflow_status === 'completed')
+                            <button type="button" disabled
+                                    class="block w-full text-center px-4 py-2 bg-emerald-200 text-emerald-800 rounded-lg cursor-not-allowed"
+                                    title="This purchase order has been marked as completed.">
+                                ✅ Completed
                             </button>
-                        </form>
-                        
-                        <button @click="showReturnModal = true"
-                                class="block w-full text-center px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors">
-                            ↩️ Return for Changes
-                        </button>
-                        
-                        <button @click="showRejectModal = true"
-                                class="block w-full text-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
-                            ❌ Reject PO
-                        </button>
-                    </div>
-                </div>
+                        @else
+                            @if(! $isSentOrCompleted)
+                                @if($canApprovePo)
+                                    @if(! in_array($purchaseOrder->workflow_status, ['approved', 'sent_to_vendor', 'rejected'], true))
+                                        <form method="POST" action="{{ route('purchase-orders.approve', $purchaseOrder->id) }}">
+                                            @csrf
+                                            <button type="submit" class="block w-full text-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                                                📨 Send PO to Purchasing
+                                            </button>
+                                        </form>
+                                    @elseif($purchaseOrder->workflow_status === 'rejected')
+                                        <button type="button" disabled
+                                                class="block w-full text-center px-4 py-2 bg-red-200 text-red-800 rounded-lg cursor-not-allowed"
+                                                title="Rejected POs cannot be sent to purchasing">
+                                            ❌ PO Rejected
+                                        </button>
+                                    @endif
+                                @elseif(! $isPurchaserOnly && $approvePoPermissionMissing)
+                                    <button type="button" disabled
+                                            class="block w-full text-center px-4 py-2 bg-green-200 text-green-800 rounded-lg cursor-not-allowed"
+                                            title="The 'approve purchase orders' permission is not configured. Ask an administrator to create it.">
+                                        📨 Send PO to Purchasing
+                                    </button>
+                                @elseif(! $isPurchaserOnly)
+                                    <button type="button" disabled
+                                            class="block w-full text-center px-4 py-2 bg-green-200 text-green-800 rounded-lg cursor-not-allowed"
+                                            title="You do not have permission to approve purchase orders.">
+                                        📨 Send PO to Purchasing
+                                    </button>
+                                @endif
 
-                <!-- Quick Actions -->
-                <div class="bg-white rounded-lg shadow-sm p-6 no-print">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-                    <div class="space-y-3">
-                        <button onclick="window.print()" 
+                                @if($canSendPo)
+                                    <button type="button" disabled
+                                            class="block w-full text-center px-4 py-2 bg-blue-200 text-blue-700 rounded-lg cursor-not-allowed"
+                                            title="PO must be approved before sending to vendors">
+                                        Send to Vendor
+                                    </button>
+                                @elseif($sendPoPermissionMissing)
+                                    <button type="button" disabled
+                                            class="block w-full text-center px-4 py-2 bg-blue-200 text-blue-700 rounded-lg cursor-not-allowed"
+                                            title="The 'send purchase orders' permission is not configured">
+                                        Send to Vendor
+                                    </button>
+                                @else
+                                    <button type="button" disabled
+                                            class="block w-full text-center px-4 py-2 bg-blue-200 text-blue-700 rounded-lg cursor-not-allowed"
+                                            title="You do not have permission to send purchase orders">
+                                        Send to Vendor
+                                    </button>
+                                @endif
+                            @endif
+                        @endif
+
+                        <button onclick="window.print()"
                                 class="block w-full text-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
                             🖨️ Print PO
                         </button>
-                        
-                        <a href="{{ route('chef-requisitions.show', $purchaseOrder->requisition_id) }}" 
+
+                        <a href="{{ route('chef-requisitions.show', $purchaseOrder->requisition_id) }}"
                            class="block w-full text-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
                             View Requisition
                         </a>
-                        
-                        <a href="{{ route('dashboard') }}" 
-                           class="block w-full text-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+
+                                <a href="{{ route('dashboard') }}"
+                                    class="block w-full text-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
                             Back to Dashboard
                         </a>
                     </div>
                 </div>
+
+                @if($canApprovePo && ! in_array($purchaseOrder->workflow_status, ['approved', 'sent_to_vendor', 'completed', 'cancelled'], true))
+                <div class="bg-white rounded-lg shadow-sm p-6 no-print">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Management Actions</h3>
+                    <div class="space-y-3">
+                        @can('update', $purchaseOrder)
+                            <button @click="showDeleteModal = true"
+                                    class="block w-full text-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                                🗑️ Delete PO
+                            </button>
+                        @endcan
+                    </div>
+                </div>
+                @endif
 
                 <!-- Vendor Breakdown -->
                 <div class="bg-white rounded-lg shadow-sm p-6 no-print">
@@ -323,56 +627,12 @@
         </div>
     </div>
 
-    <!-- Return for Changes Modal -->
-    <div x-show="showReturnModal" 
+    @if($canApprovePo)
+    <!-- Delete PO Modal -->
+    <div x-show="showDeleteModal" 
          x-cloak
          class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50"
-         @click.self="showReturnModal = false">
-        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div class="mt-3">
-                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100">
-                    <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                    </svg>
-                </div>
-                <h3 class="text-lg leading-6 font-medium text-gray-900 text-center mt-4">Return PO for Changes</h3>
-                <div class="mt-2 px-7 py-3">
-                    <p class="text-sm text-gray-500 text-center mb-4">
-                        Please provide a reason for returning this purchase order.
-                    </p>
-                    <form method="POST" action="{{ route('purchase-orders.return', $purchaseOrder->id) }}">
-                        @csrf
-                        <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Return Reason *</label>
-                            <textarea name="return_reason" 
-                                      x-model="returnReason"
-                                      rows="4" 
-                                      required
-                                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-                                      placeholder="Explain what needs to be changed..."></textarea>
-                        </div>
-                        <div class="flex space-x-3">
-                            <button type="button" 
-                                    @click="showReturnModal = false; returnReason = ''"
-                                    class="flex-1 px-4 py-2 bg-gray-200 text-gray-900 rounded-lg hover:bg-gray-300">
-                                Cancel
-                            </button>
-                            <button type="submit" 
-                                    class="flex-1 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700">
-                                Return PO
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Reject PO Modal -->
-    <div x-show="showRejectModal" 
-         x-cloak
-         class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50"
-         @click.self="showRejectModal = false">
+         @click.self="showDeleteModal = false">
         <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
             <div class="mt-3">
                 <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
@@ -380,31 +640,31 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                     </svg>
                 </div>
-                <h3 class="text-lg leading-6 font-medium text-gray-900 text-center mt-4">Reject Purchase Order</h3>
+                <h3 class="text-lg leading-6 font-medium text-gray-900 text-center mt-4">Delete Purchase Order</h3>
                 <div class="mt-2 px-7 py-3">
                     <p class="text-sm text-gray-500 text-center mb-4">
-                        Are you sure you want to reject this purchase order? This action cannot be undone.
+                        Are you sure you want to delete this purchase order? This action cannot be undone.
                     </p>
                     <form method="POST" action="{{ route('purchase-orders.reject', $purchaseOrder->id) }}">
                         @csrf
                         <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Rejection Reason *</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Deletion Reason *</label>
                             <textarea name="rejection_reason" 
-                                      x-model="rejectionReason"
+                                      x-model="deleteReason"
                                       rows="4" 
                                       required
                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                                      placeholder="Explain why this PO is being rejected..."></textarea>
+                                      placeholder="Explain why this PO is being deleted..."></textarea>
                         </div>
                         <div class="flex space-x-3">
                             <button type="button" 
-                                    @click="showRejectModal = false; rejectionReason = ''"
+                                    @click="showDeleteModal = false; deleteReason = ''"
                                     class="flex-1 px-4 py-2 bg-gray-200 text-gray-900 rounded-lg hover:bg-gray-300">
                                 Cancel
                             </button>
                             <button type="submit" 
                                     class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
-                                Reject PO
+                                Delete PO
                             </button>
                         </div>
                     </form>
@@ -412,6 +672,7 @@
             </div>
         </div>
     </div>
+    @endif
 
 @push('styles')
 <style>

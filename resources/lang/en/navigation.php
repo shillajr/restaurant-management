@@ -7,6 +7,7 @@ return [
     ],
     'groups' => [
         'main' => 'Main',
+        'finance' => 'Finance',
         'people' => 'People',
         'insights' => 'Insights',
         'system' => 'System',
@@ -16,6 +17,7 @@ return [
         'requisitions' => 'Requisitions',
         'purchase_orders' => 'Purchase Orders',
         'expenses' => 'Expenses',
+        'financial_ledgers' => 'Debts & Credits',
         'reports' => 'Reports',
         'settings' => 'Settings',
     ],

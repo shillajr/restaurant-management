@@ -11,6 +11,7 @@ use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\EmployeeSalaryController;
 use App\Http\Controllers\EmployeeLoanController;
 use App\Http\Controllers\VendorController;
+use App\Http\Controllers\FinancialLedgerController;
 
 Route::get('/', function () {
     return redirect('/dashboard');
@@ -45,17 +46,29 @@ Route::middleware(['auth'])->group(function () {
     
     Route::get('/purchase-orders/{purchaseOrder}', [\App\Http\Controllers\PurchaseOrderController::class, 'show'])->name('purchase-orders.show');
     Route::patch('/purchase-orders/{purchaseOrder}/status', [\App\Http\Controllers\PurchaseOrderController::class, 'updateStatus'])->name('purchase-orders.update-status');
-    Route::post('/purchase-orders/{purchaseOrder}/approve', [\App\Http\Controllers\PurchaseOrderController::class, 'approve'])->name('purchase-orders.approve');
+    Route::post('/purchase-orders/{purchaseOrder}/approve', [\App\Http\Controllers\PurchaseOrderController::class, 'approve'])
+        ->name('purchase-orders.approve');
+    Route::post('/purchase-orders/{purchaseOrder}/send', [\App\Http\Controllers\PurchaseOrderController::class, 'sendToVendors'])
+        ->middleware('can:send purchase orders')
+        ->name('purchase-orders.send');
+    Route::post('/purchase-orders/{purchaseOrder}/complete', [\App\Http\Controllers\PurchaseOrderController::class, 'markCompleted'])
+        ->name('purchase-orders.complete');
     Route::post('/purchase-orders/{purchaseOrder}/reject', [\App\Http\Controllers\PurchaseOrderController::class, 'reject'])->name('purchase-orders.reject');
     Route::post('/purchase-orders/{purchaseOrder}/return', [\App\Http\Controllers\PurchaseOrderController::class, 'returnForChanges'])->name('purchase-orders.return');
     
-    Route::get('/expenses/create', function () {
-        return view('expenses.create');
-    })->name('expenses.create');
-    
-    Route::post('/expenses', function () {
-        return "Expense created successfully - To be fully implemented";
-    })->name('expenses.store');
+    Route::get('/expenses', [\App\Http\Controllers\ExpenseController::class, 'index'])->name('expenses.index');
+    Route::get('/expenses/create', [\App\Http\Controllers\ExpenseController::class, 'create'])->name('expenses.create');
+    Route::post('/expenses', [\App\Http\Controllers\ExpenseController::class, 'store'])->name('expenses.store');
+
+    Route::get('/finance/ledgers', [FinancialLedgerController::class, 'index'])
+        ->name('financial-ledgers.index');
+    Route::get('/finance/ledgers/vendor/create', [FinancialLedgerController::class, 'createVendor'])
+        ->name('financial-ledgers.vendor.create');
+    Route::post('/finance/ledgers', [FinancialLedgerController::class, 'store'])
+        ->name('financial-ledgers.store');
+    Route::post('/finance/ledgers/{financialLedger}/payments', [FinancialLedgerController::class, 'storePayment'])
+        ->middleware('role:admin|manager|finance')
+        ->name('financial-ledgers.payments.store');
     
     Route::get('/reports', function () {
         return 'Reports Index - To be implemented';
@@ -86,12 +99,18 @@ Route::middleware(['auth'])->group(function () {
 
         // Admin user management routes
         Route::post('/users/invite', [AdminUserController::class, 'invite'])->name('admin.users.invite');
+        Route::post('/users/send-communication', [AdminUserController::class, 'sendCommunication'])->name('admin.users.communication.send');
+        Route::put('/users/{user}/contact', [AdminUserController::class, 'updateContact'])->name('admin.users.contact.update');
         Route::put('/users/{user}/roles', [AdminUserController::class, 'updateRoles'])->name('admin.users.roles.update');
         Route::post('/users/{user}/resend-invite', [AdminUserController::class, 'resendInvite'])->name('admin.users.resend-invite');
     });
     
-    Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
-    Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update');
+    Route::get('/settings', [SettingsController::class, 'index'])
+        ->middleware('can:manage settings')
+        ->name('settings');
+    Route::put('/settings', [SettingsController::class, 'update'])
+        ->middleware('can:manage settings')
+        ->name('settings.update');
     
     // Items Management routes
     Route::get('/items', [ItemController::class, 'index'])->name('items.index');
@@ -100,8 +119,21 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/items/{id}', [ItemController::class, 'destroy'])->name('items.destroy');
 
     // Category and vendor management
-    Route::post('/item-categories', [ItemCategoryController::class, 'store'])->name('item-categories.store');
-    Route::post('/vendors', [VendorController::class, 'store'])->name('vendors.store');
+    Route::post('/item-categories', [ItemCategoryController::class, 'store'])
+        ->middleware('can:manage settings')
+        ->name('item-categories.store');
+    Route::post('/vendors', [VendorController::class, 'store'])
+        ->middleware('can:manage settings')
+        ->name('vendors.store');
+    Route::put('/vendors/{vendor}', [VendorController::class, 'update'])
+        ->middleware('can:manage settings')
+        ->name('vendors.update');
+    Route::patch('/vendors/{vendor}/archive', [VendorController::class, 'archive'])
+        ->middleware('can:manage settings')
+        ->name('vendors.archive');
+    Route::patch('/vendors/{vendor}/restore', [VendorController::class, 'restore'])
+        ->middleware('can:manage settings')
+        ->name('vendors.restore');
     
     // API endpoints for items
     Route::get('/api/items/active', [ItemController::class, 'getActiveItems'])->name('api.items.active');

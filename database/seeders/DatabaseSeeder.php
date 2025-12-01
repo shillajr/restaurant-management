@@ -42,6 +42,8 @@ class DatabaseSeeder extends Seeder
             'edit purchase orders',
             'delete purchase orders',
             'mark purchased',
+            'approve purchase orders',
+            'send purchase orders',
             
             // Expense permissions
             'view expenses',
@@ -60,6 +62,9 @@ class DatabaseSeeder extends Seeder
             // Report permissions
             'view reports',
             'export reports',
+
+            // Settings permissions
+            'manage settings',
             
             // User management
             'manage users',
@@ -80,20 +85,23 @@ class DatabaseSeeder extends Seeder
         $manager = Role::create(['name' => 'manager']);
         $manager->givePermissionTo([
             'view requisitions',
+            'create requisitions',
+            'edit requisitions',
+            'delete requisitions',
             'approve requisitions',
             'view purchase orders',
             'create purchase orders',
             'edit purchase orders',
+            'delete purchase orders',
             'mark purchased',
             'view expenses',
             'create expenses',
+            'edit expenses',
+            'delete expenses',
             'approve expenses',
-            'view payroll',
-            'create payroll',
-            'edit payroll',
-            'mark paid',
             'view reports',
             'export reports',
+            'approve purchase orders',
         ]);
 
         // Chef - Requisition Creator
@@ -103,30 +111,42 @@ class DatabaseSeeder extends Seeder
             'create requisitions',
             'edit requisitions',
             'delete requisitions',
+            'view purchase orders',
         ]);
 
         // Purchaser - Purchase Orders
         $purchaser = Role::create(['name' => 'purchaser']);
         $purchaser->givePermissionTo([
             'view requisitions',
+            'create requisitions',
+            'edit requisitions',
+            'delete requisitions',
             'view purchase orders',
             'create purchase orders',
             'edit purchase orders',
-            'mark purchased',
-            'view expenses',
-            'create expenses',
+            'delete purchase orders',
+            'send purchase orders',
+            'view reports',
+            'export reports',
         ]);
 
         // Finance - Expenses and Payroll
         $finance = Role::create(['name' => 'finance']);
         $finance->givePermissionTo([
+            'view purchase orders',
+            'create purchase orders',
+            'edit purchase orders',
+            'delete purchase orders',
+            'mark purchased',
             'view expenses',
             'create expenses',
             'edit expenses',
+            'delete expenses',
             'approve expenses',
             'view payroll',
             'create payroll',
             'edit payroll',
+            'delete payroll',
             'mark paid',
             'view reports',
             'export reports',
@@ -135,10 +155,6 @@ class DatabaseSeeder extends Seeder
         // Auditor - View Only
         $auditor = Role::create(['name' => 'auditor']);
         $auditor->givePermissionTo([
-            'view requisitions',
-            'view purchase orders',
-            'view expenses',
-            'view payroll',
             'view reports',
             'export reports',
         ]);
@@ -184,6 +200,30 @@ class DatabaseSeeder extends Seeder
                 'sms_enabled' => false,
                 'whatsapp_enabled' => false,
                 'sms_provider' => 'twilio',
+                'purchase_order_notification_emails' => ['purchaser@restaurant.com'],
+                'purchase_order_notification_phones' => [],
+                'requisition_submitted_notification_phones' => [
+                    'chef' => [],
+                    'purchaser' => [],
+                    'manager' => [],
+                ],
+                'requisition_submitted_templates' => [
+                    'chef' => 'Your requisition #{requisition_number} has been submitted successfully.',
+                    'purchaser' => 'Chef {actor_name} submitted requisition #{requisition_number} for {requested_for_date}. Items: {item_count}.',
+                    'manager' => 'New requisition #{requisition_number} from {chef_name} is pending review for {requested_for_date}.',
+                ],
+                'requisition_approved_notification_phones' => [
+                    'chef' => [],
+                    'purchaser' => [],
+                    'manager' => [],
+                ],
+                'requisition_approved_templates' => [
+                    'chef' => 'Manager {actor_name} approved your requisition #{requisition_number}.',
+                    'purchaser' => 'Requisition #{requisition_number} approved by {actor_name}. Total quantity: {total_quantity}.',
+                    'manager' => '{actor_name} approved requisition #{requisition_number}. Ready for purchase order conversion.',
+                ],
+                'user_onboarding_sms_enabled' => false,
+                'user_onboarding_sms_template' => \App\Services\SmsNotificationService::DEFAULT_USER_ONBOARDING_TEMPLATE,
             ]
         );
 
@@ -207,6 +247,7 @@ class DatabaseSeeder extends Seeder
             'entity_id' => $entity->id,
             'name' => 'System Admin',
             'email' => 'admin@restaurant.com',
+            'phone' => '255710000001',
             'password' => Hash::make('password'),
             'email_verified_at' => now(),
         ]);
@@ -217,6 +258,7 @@ class DatabaseSeeder extends Seeder
             'entity_id' => $entity->id,
             'name' => 'Restaurant Manager',
             'email' => 'manager@restaurant.com',
+            'phone' => '255710000002',
             'password' => Hash::make('password'),
             'email_verified_at' => now(),
         ]);
@@ -227,6 +269,7 @@ class DatabaseSeeder extends Seeder
             'entity_id' => $entity->id,
             'name' => 'Head Chef',
             'email' => 'chef@restaurant.com',
+            'phone' => '255710000003',
             'password' => Hash::make('password'),
             'email_verified_at' => now(),
         ]);
@@ -237,6 +280,7 @@ class DatabaseSeeder extends Seeder
             'entity_id' => $entity->id,
             'name' => 'Purchase Officer',
             'email' => 'purchaser@restaurant.com',
+            'phone' => '255710000004',
             'password' => Hash::make('password'),
             'email_verified_at' => now(),
         ]);
@@ -247,6 +291,7 @@ class DatabaseSeeder extends Seeder
             'entity_id' => $entity->id,
             'name' => 'Finance Manager',
             'email' => 'finance@restaurant.com',
+            'phone' => '255710000005',
             'password' => Hash::make('password'),
             'email_verified_at' => now(),
         ]);
@@ -257,6 +302,7 @@ class DatabaseSeeder extends Seeder
             'entity_id' => $entity->id,
             'name' => 'Internal Auditor',
             'email' => 'auditor@restaurant.com',
+            'phone' => '255710000006',
             'password' => Hash::make('password'),
             'email_verified_at' => now(),
         ]);
