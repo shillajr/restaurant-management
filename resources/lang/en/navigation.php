@@ -3,7 +3,7 @@
 return [
     'brand' => [
         'name' => 'RMS',
-        'tagline' => 'Restaurant Mgmt',
+        'tagline' => 'RMS',
     ],
     'groups' => [
         'main' => 'Main',

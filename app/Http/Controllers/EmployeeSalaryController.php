@@ -17,7 +17,7 @@ class EmployeeSalaryController extends Controller
      */
     public function index()
     {
-        $employees = User::orderBy('name')->paginate(20);
+        $employees = User::orderBy('name')->paginate(10);
         
         return view('employees.salary-index', compact('employees'));
     }

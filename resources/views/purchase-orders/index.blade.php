@@ -258,12 +258,7 @@
                     </tbody>
                 </table>
             </div>
-            
-            @if($purchaseOrders->hasPages())
-            <div class="px-6 py-4 bg-white border-t border-gray-200">
-                {{ $purchaseOrders->links() }}
-            </div>
-            @endif
+            <x-pagination :paginator="$purchaseOrders" container-class="px-6 py-4 bg-white border-t border-gray-200" />
         </div>
     </div>
 </div>

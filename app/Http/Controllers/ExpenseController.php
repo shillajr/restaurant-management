@@ -72,7 +72,7 @@ class ExpenseController extends Controller
             $expensesQuery->where('amount', '<=', (float) $filters['amount_max']);
         }
 
-        $expenses = $expensesQuery->paginate(15)->appends(array_filter($filters, static function ($value) {
+        $expenses = $expensesQuery->paginate(10)->appends(array_filter($filters, static function ($value) {
             return ! is_null($value) && $value !== '';
         }));
 

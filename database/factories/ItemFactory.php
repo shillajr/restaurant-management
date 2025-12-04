@@ -26,6 +26,7 @@ class ItemFactory extends Factory
             'stock' => fake()->randomFloat(2, 0, 1000),
             'reorder_level' => fake()->randomFloat(2, 10, 100),
             'description' => fake()->optional()->sentence(),
+            'is_seeded' => false,
         ];
     }
 }

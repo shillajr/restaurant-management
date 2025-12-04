@@ -275,9 +275,7 @@
                 </tbody>
             </table>
 
-            <div class="border-t border-gray-200 bg-white px-4 py-3 sm:px-6">
-                {{ $loans->links() }}
-            </div>
+            <x-pagination :paginator="$loans" container-class="border-t border-gray-200 bg-white px-4 py-3 sm:px-6" />
         </div>
         @else
         <div class="rounded-lg bg-white p-12 text-center shadow-sm">

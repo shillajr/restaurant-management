@@ -7,6 +7,10 @@
 
 @section('title', $requisition['title'])
 
+@php
+    $availableItems = $availableItems ?? [];
+@endphp
+
 @section('content')
 <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-10">
             <!-- Header -->
@@ -19,8 +23,8 @@
             <div class="bg-white shadow-md rounded-lg overflow-hidden">
                             <form action="{{ route('chef-requisitions.store') }}" method="POST" 
                                 x-data="requisitionForm()"
-                                x-init='loadInitial([])'
-                      @submit.prevent="submitForm"
+                                x-init='loadInitial(@json(old('items', [])))'
+                      @submit.prevent="submitForm($event)"
                       class="p-6 space-y-6">
                     @csrf
 
@@ -67,6 +71,12 @@
                             </label>
                             <span class="text-xs text-gray-500">{{ $requisition['items_section']['instructions'] }}</span>
                         </div>
+
+                        @if (empty($availableItems))
+                            <div class="mb-4 rounded-md border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+                                {{ __('No active items available. Add items to the catalog before creating a requisition.') }}
+                            </div>
+                        @endif
 
                         <!-- Items Table -->
                         <div class="overflow-x-auto border border-gray-200 rounded-lg">
@@ -312,7 +322,12 @@
         </div>
     </div>
 
-    @push('scripts')
-        @include('chef-requisitions.partials.form-script')
-    @endpush
 @endsection
+
+@push('scripts')
+    <script>
+        window.requisitionFormConfig = window.requisitionFormConfig || {};
+        window.requisitionFormConfig.availableItems = @json($availableItems);
+    </script>
+    @include('chef-requisitions.partials.form-script')
+@endpush

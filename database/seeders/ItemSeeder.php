@@ -67,7 +67,9 @@ class ItemSeeder extends Seeder
         ];
 
         foreach ($items as $item) {
-            Item::create($item);
+            Item::create(array_merge($item, [
+                'is_seeded' => true,
+            ]));
         }
     }
 }

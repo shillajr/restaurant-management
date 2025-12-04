@@ -4,7 +4,7 @@ return [
     'app' => [
         'name_short' => 'RMS',
         'name_full' => 'Restaurant Management System',
-        'tagline' => 'Restaurant Mgmt',
+        'tagline' => 'RMS',
     ],
     'actions' => [
         'cancel' => 'Cancel',
@@ -57,5 +57,14 @@ return [
     ],
     'tips' => [
         'heading' => 'Tips',
+    ],
+    'footer' => [
+        'powered_by' => "Powered by Ibu's Group Tanzania",
+    ],
+    'errors' => [
+        'forbidden' => [
+            'title' => 'Access Restricted',
+            'description' => 'You do not have permission to view this page.',
+        ],
     ],
 ];

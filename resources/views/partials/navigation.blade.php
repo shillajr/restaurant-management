@@ -289,7 +289,12 @@
 
         <!-- Page Content -->
         <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50">
-            @yield('content')
+            <div class="flex min-h-full flex-col">
+                <div class="flex-1">
+                    @yield('content')
+                </div>
+                @include('partials.footer')
+            </div>
         </main>
     </div>
 </div>

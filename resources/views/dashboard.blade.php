@@ -3,11 +3,25 @@
 @section('title', __('dashboard.title'))
 
 @section('content')
-    @include('partials.page-header', ['pageDescription' => __('dashboard.welcome', ['name' => auth()->user()->name])])
     @section('page-title', __('dashboard.title'))
     @section('page-actions')
-        <span class="text-sm text-gray-600">{{ now()->translatedFormat('l, F j, Y') }}</span>
+        <div class="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+            <span class="uppercase tracking-wide">SMS / WhatsApp Balance</span>
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            @if($twilioBalance)
+                <span>{{ $twilioBalance['currency'] }}</span>
+                <span>{{ $twilioBalance['balance'] }}</span>
+            @elseif($twilioBalanceError)
+                <span>{{ $twilioBalanceError }}</span>
+            @else
+                <span>Twilio balance unavailable</span>
+            @endif
+        </div>
     @endsection
+
+    @include('partials.page-header', ['pageDescription' => __('dashboard.welcome', ['name' => auth()->user()->name])])
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <!-- KPI Cards -->
@@ -234,3 +248,4 @@
         </main>
     </div>
 @endsection
+

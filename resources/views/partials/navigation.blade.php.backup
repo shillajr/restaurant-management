@@ -11,7 +11,7 @@
                     </div>
                     <div class="flex flex-col">
                         <span class="text-lg font-bold text-gray-900">RMS</span>
-                        <span class="text-xs text-gray-500">Restaurant Mgmt</span>
+                        <span class="text-xs text-gray-500">RMS</span>
                     </div>
                 </a>
                 <!-- Mobile close button -->

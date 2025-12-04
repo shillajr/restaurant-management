@@ -2,15 +2,22 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\Twilio\TwilioBalanceFetchFailed;
+use App\Exceptions\Twilio\TwilioCredentialsMissing;
 use App\Models\ChefRequisition;
-use App\Models\LoyverseSale;
 use App\Models\Expense;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use App\Models\LoyverseSale;
+use App\Services\TwilioAccountService;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
+    public function __construct(private readonly TwilioAccountService $twilioAccountService)
+    {
+        $this->middleware('auth');
+    }
+
     /**
      * Display the dashboard.
      */
@@ -27,7 +34,19 @@ class DashboardController extends Controller
         $todayProfit = 0;
         $profitMargin = 0;
         $pendingApprovals = 0;
+        $twilioBalance = null;
+        $twilioBalanceError = null;
         $recentRequisitions = collect();
+
+        if ($user->entity) {
+            $entity = $user->entity->loadMissing('integrationSettings');
+
+            try {
+                $twilioBalance = $this->twilioAccountService->fetchBalanceForEntity($entity);
+            } catch (TwilioCredentialsMissing|TwilioBalanceFetchFailed $exception) {
+                $twilioBalanceError = $exception->getMessage();
+            }
+        }
 
         // Calculate KPIs for admin, manager, and finance roles
         if ($user->hasAnyRole(['admin', 'manager', 'finance'])) {
@@ -85,7 +104,9 @@ class DashboardController extends Controller
             'todayProfit',
             'profitMargin',
             'pendingApprovals',
-            'recentRequisitions'
+            'recentRequisitions',
+            'twilioBalance',
+            'twilioBalanceError'
         ));
     }
 

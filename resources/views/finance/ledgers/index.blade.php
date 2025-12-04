@@ -245,11 +245,7 @@
                             </tbody>
                         </table>
                     </div>
-                    @if($ledgers->hasPages())
-                        <div class="border-t border-gray-200 px-4 py-3">
-                            {{ $ledgers->links() }}
-                        </div>
-                    @endif
+                    <x-pagination :paginator="$ledgers" container-class="border-t border-gray-200 px-4 py-3" />
                 </div>
             </div>
 

@@ -5,6 +5,7 @@
     $pageCopy = $isResubmission ? __('requisitions.resubmit') : __('requisitions.edit');
     $common = __('common');
 
+    $availableItems = $availableItems ?? [];
     $rawItems = old('items', $chefRequisition->items ?? []);
     $initialItems = collect($rawItems)->map(function ($item) {
         $price = isset($item['price']) ? (float)$item['price'] : 0;
@@ -23,6 +24,7 @@
             'lineTotal' => $price * $quantity,
             'priceEdited' => $item['priceEdited'] ?? (abs($price - $defaultPrice) > 0.001),
             'originalPrice' => $item['originalPrice'] ?? $defaultPrice,
+            'itemName' => $item['itemName'] ?? ($item['item'] ?? ($item['item_name'] ?? null)),
         ];
     })->toArray();
 
@@ -62,7 +64,7 @@
           <form action="{{ route('chef-requisitions.update', $chefRequisition->id) }}" method="POST"
               x-data="requisitionForm()"
               x-init='loadInitial(@json($initialItems))'
-              @submit.prevent="submitForm"
+              @submit.prevent="submitForm($event)"
               class="p-6 space-y-6">
             @csrf
             @method('PUT')
@@ -319,5 +321,9 @@
 @endsection
 
 @push('scripts')
+    <script>
+        window.requisitionFormConfig = window.requisitionFormConfig || {};
+        window.requisitionFormConfig.availableItems = @json($availableItems);
+    </script>
     @include('chef-requisitions.partials.form-script')
 @endpush

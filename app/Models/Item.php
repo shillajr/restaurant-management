@@ -25,6 +25,7 @@ class Item extends Model
         'stock',
         'reorder_level',
         'description',
+        'is_seeded',
     ];
 
     /**
@@ -36,6 +37,7 @@ class Item extends Model
         'price' => 'decimal:2',
         'stock' => 'decimal:2',
         'reorder_level' => 'decimal:2',
+        'is_seeded' => 'boolean',
     ];
 
     /**

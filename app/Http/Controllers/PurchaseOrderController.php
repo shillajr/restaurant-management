@@ -61,7 +61,7 @@ class PurchaseOrderController extends Controller
         $sortOrder = $request->get('order', 'desc');
         $query->orderBy($sortBy, $sortOrder);
         
-        $purchaseOrders = $query->paginate(15)->withQueryString();
+        $purchaseOrders = $query->paginate(10)->withQueryString();
 
         return view('purchase-orders.index', compact('purchaseOrders'));
     }

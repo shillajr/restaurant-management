@@ -50,7 +50,7 @@ class FinancialLedgerController extends Controller
             })
             ->orderByDesc('opened_at');
 
-        $ledgers = $ledgersQuery->paginate(15)->withQueryString();
+        $ledgers = $ledgersQuery->paginate(10)->withQueryString();
 
         $stats = [
             'total_outstanding' => (float) FinancialLedger::outstanding()->sum('outstanding_amount'),

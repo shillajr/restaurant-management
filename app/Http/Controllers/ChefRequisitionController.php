@@ -69,7 +69,7 @@ class ChefRequisitionController extends Controller
         
         // Load relationships and paginate
         $requisitions = $query->with(['chef', 'checker'])
-            ->paginate(15)
+            ->paginate(10)
             ->withQueryString();
 
         if (str_starts_with($request->path(), 'api')) {
@@ -90,7 +90,9 @@ class ChefRequisitionController extends Controller
      */
     public function create()
     {
-        return view('chef-requisitions.create');
+        $availableItems = $this->getAvailableItems();
+
+        return view('chef-requisitions.create', compact('availableItems'));
     }
 
     /**
@@ -197,8 +199,9 @@ class ChefRequisitionController extends Controller
         $chefRequisition->load(['chef']);
 
         $isResubmission = $chefRequisition->status === 'changes_requested';
+        $availableItems = $this->getAvailableItems();
 
-        return view('chef-requisitions.edit', compact('chefRequisition', 'isResubmission'));
+        return view('chef-requisitions.edit', compact('chefRequisition', 'isResubmission', 'availableItems'));
     }
 
     /**
@@ -463,5 +466,29 @@ class ChefRequisitionController extends Controller
                 'originalPrice' => $originalPrice,
             ];
         })->toArray();
+    }
+
+    /**
+     * Fetch the list of active, non-seeded items available for requisitions.
+     */
+    protected function getAvailableItems(): array
+    {
+        return Item::query()
+            ->where('is_seeded', false)
+            ->active()
+            ->orderBy('category')
+            ->orderBy('name')
+            ->get(['id', 'name', 'category', 'uom', 'vendor', 'price'])
+            ->map(function (Item $item) {
+                return [
+                    'id' => $item->id,
+                    'name' => $item->name,
+                    'category' => $item->category ?? 'Other Items',
+                    'uom' => $item->uom ?? '',
+                    'vendor' => $item->vendor ?? '',
+                    'price' => (float) $item->price,
+                ];
+            })
+            ->toArray();
     }
 }

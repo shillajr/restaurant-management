@@ -223,11 +223,7 @@
                 </div>
 
                 <!-- Pagination -->
-            @if($employees->hasPages())
-                <div class="border-t border-gray-200 px-6 py-4">
-                    {{ $employees->links() }}
-                </div>
-            @endif
+            <x-pagination :paginator="$employees" container-class="border-t border-gray-200 px-6 py-4" />
             </div>
 
             <!-- Quick Actions -->

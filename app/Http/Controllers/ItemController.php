@@ -16,7 +16,7 @@ class ItemController extends Controller
      */
     public function index(Request $request)
     {
-        $items = Item::orderBy('name')->get();
+        $items = Item::where('is_seeded', false)->orderBy('name')->get();
         $vendors = Vendor::orderBy('name')->get();
         $itemCategories = ItemCategory::orderBy('name')->get();
 
@@ -79,6 +79,7 @@ class ItemController extends Controller
             'stock' => $validated['stock'] ?? null,
             'reorder_level' => $validated['reorder_level'] ?? null,
             'description' => $validated['description'] ?? null,
+            'is_seeded' => false,
         ]);
 
         return $this->redirectAfterItemAction($request, 'Item created successfully!');
@@ -89,7 +90,7 @@ class ItemController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $item = Item::findOrFail($id);
+        $item = Item::where('is_seeded', false)->findOrFail($id);
 
         $validated = $request->validateWithBag('items', [
             'name' => 'required|string|max:255',
@@ -130,6 +131,7 @@ class ItemController extends Controller
             'stock' => $validated['stock'] ?? null,
             'reorder_level' => $validated['reorder_level'] ?? null,
             'description' => $validated['description'] ?? null,
+            'is_seeded' => false,
         ]);
 
         return $this->redirectAfterItemAction($request, 'Item updated successfully!');
@@ -140,7 +142,7 @@ class ItemController extends Controller
      */
     public function destroy(Request $request, $id)
     {
-        $item = Item::findOrFail($id);
+        $item = Item::where('is_seeded', false)->findOrFail($id);
         
         // Check if item is used in any requisitions or purchase orders
         // This would need to be implemented based on your requisition/PO models
@@ -155,7 +157,7 @@ class ItemController extends Controller
      */
     public function getActiveItems(Request $request)
     {
-        $query = Item::active();
+        $query = Item::active()->where('is_seeded', false);
 
         // Filter by category if provided
         if ($request->has('category')) {
@@ -178,6 +180,7 @@ class ItemController extends Controller
     public function getLowStockItems()
     {
         $items = Item::lowStock()
+                ->where('is_seeded', false)
                     ->active()
                     ->orderBy('stock')
                     ->get();

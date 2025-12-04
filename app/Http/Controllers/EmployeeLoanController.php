@@ -35,7 +35,7 @@ class EmployeeLoanController extends Controller
 
         $loans = $query->orderBy('issue_date', 'desc')
             ->orderBy('created_at', 'desc')
-            ->paginate(20)
+            ->paginate(10)
             ->appends($request->query());
 
         // Summary statistics

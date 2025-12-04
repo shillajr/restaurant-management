@@ -309,11 +309,7 @@
                 </div>
 
                 <!-- Pagination -->
-                @if($payrolls->hasPages())
-                    <div class="px-6 py-4 border-t border-gray-200">
-                        {{ $payrolls->links() }}
-                    </div>
-                @endif
+                <x-pagination :paginator="$payrolls" container-class="px-6 py-4 border-t border-gray-200" />
             </div>
     </div>
 @endsection

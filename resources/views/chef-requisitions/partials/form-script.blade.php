@@ -13,33 +13,13 @@
         };
 
         const state = {
-            // Sample items from Item Master (in production, fetch from API)
-            availableItems: [
-                { id: 1, name: 'Tomatoes', category: 'Vegetables', uom: 'kg', vendor: 'Fresh Farm Suppliers', price: 3500, stock: 45 },
-                { id: 2, name: 'Onions', category: 'Vegetables', uom: 'kg', vendor: 'Fresh Farm Suppliers', price: 2800, stock: 60 },
-                { id: 3, name: 'Carrots', category: 'Vegetables', uom: 'kg', vendor: 'Fresh Farm Suppliers', price: 3200, stock: 30 },
-                { id: 4, name: 'Bell Peppers', category: 'Vegetables', uom: 'kg', vendor: 'Fresh Farm Suppliers', price: 5500, stock: 18 },
-                { id: 5, name: 'Chicken Breast', category: 'Meat', uom: 'kg', vendor: 'Quality Meats Ltd', price: 12000, stock: 30 },
-                { id: 6, name: 'Beef Sirloin', category: 'Meat', uom: 'kg', vendor: 'Quality Meats Ltd', price: 18000, stock: 25 },
-                { id: 7, name: 'Pork Chops', category: 'Meat', uom: 'kg', vendor: 'Quality Meats Ltd', price: 14000, stock: 20 },
-                { id: 8, name: 'Fresh Salmon', category: 'Seafood', uom: 'kg', vendor: 'Ocean Fresh Suppliers', price: 25000, stock: 10 },
-                { id: 9, name: 'Prawns', category: 'Seafood', uom: 'kg', vendor: 'Ocean Fresh Suppliers', price: 28000, stock: 8 },
-                { id: 10, name: 'Fresh Milk', category: 'Dairy', uom: 'L', vendor: 'Dairy Delights Co', price: 3000, stock: 50 },
-                { id: 11, name: 'Butter', category: 'Dairy', uom: 'kg', vendor: 'Dairy Delights Co', price: 8000, stock: 12 },
-                { id: 12, name: 'Cheddar Cheese', category: 'Dairy', uom: 'kg', vendor: 'Dairy Delights Co', price: 15000, stock: 8 },
-                { id: 13, name: 'Rice (Basmati)', category: 'Grains', uom: 'kg', vendor: 'Grain Wholesalers', price: 4200, stock: 100 },
-                { id: 14, name: 'Pasta (Spaghetti)', category: 'Grains', uom: 'kg', vendor: 'Grain Wholesalers', price: 3500, stock: 80 },
-                { id: 15, name: 'Olive Oil', category: 'Cooking Oils', uom: 'L', vendor: 'Premium Foods Co', price: 8500, stock: 12 },
-                { id: 16, name: 'Vegetable Oil', category: 'Cooking Oils', uom: 'L', vendor: 'Premium Foods Co', price: 5000, stock: 20 },
-                { id: 17, name: 'Black Pepper', category: 'Spices', uom: 'g', vendor: 'Spice Market Ltd', price: 15000, stock: 500 },
-                { id: 18, name: 'Salt', category: 'Spices', uom: 'kg', vendor: 'Spice Market Ltd', price: 1500, stock: 50 },
-                { id: 19, name: 'Bananas', category: 'Fruits', uom: 'kg', vendor: 'Fresh Farm Suppliers', price: 2500, stock: 40 },
-                { id: 20, name: 'Apples', category: 'Fruits', uom: 'kg', vendor: 'Fresh Farm Suppliers', price: 4500, stock: 25 }
-            ],
+            availableItems: [],
             rawInitialItems: [],
             items: [],
             currencyMeta: window.appCurrency || { code: 'USD', symbol: '$', precision: 2 },
             init() {
+                this.availableItems = this.resolveAvailableItems();
+                this.ensureInitialSelections();
                 const source = this.rawInitialItems.length ? this.rawInitialItems : [this.emptyItem()];
                 this.items = source.map(item => this.hydrateItem(item));
             },
@@ -57,32 +37,94 @@
                     uom: '',
                     lineTotal: 0,
                     priceEdited: false,
-                    originalPrice: 0
+                    originalPrice: 0,
+                    itemName: ''
                 };
             },
             hydrateItem(item) {
                 const base = this.emptyItem();
                 const merged = { ...base, ...item };
 
-                merged.item_id = item.item_id ?? item.itemId ?? '';
+                merged.item_id = this.normalizeId(item.item_id ?? item.itemId) ?? '';
                 merged.vendor = item.vendor ?? base.vendor;
                 merged.uom = item.uom ?? item.unit ?? base.uom;
+                merged.itemName = item.itemName ?? item.item ?? item.item_name ?? base.itemName;
 
-                const price = parseFloat(item.price ?? base.price) || 0;
-                const quantity = parseFloat(item.quantity ?? base.quantity) || 0;
-                const defaultPrice = parseFloat(item.defaultPrice ?? item.originalPrice ?? price) || 0;
+                const price = this.toNumber(item.price ?? base.price);
+                const quantity = this.toNumber(item.quantity ?? base.quantity);
+                const defaultPrice = this.toNumber(item.defaultPrice ?? item.originalPrice ?? price);
+                const originalPrice = this.toNumber(item.originalPrice ?? defaultPrice ?? price);
                 const priceEdited = typeof item.priceEdited !== 'undefined'
                     ? this.parseBoolean(item.priceEdited)
-                    : (Math.round(price * 100) !== Math.round(defaultPrice * 100));
+                    : this.pricesDiffer(price, defaultPrice);
 
                 merged.price = price;
                 merged.quantity = quantity;
                 merged.defaultPrice = defaultPrice;
-                merged.originalPrice = parseFloat(item.originalPrice ?? defaultPrice ?? price) || price;
+                merged.originalPrice = originalPrice;
                 merged.lineTotal = price * quantity;
                 merged.priceEdited = priceEdited;
 
                 return merged;
+            },
+            resolveAvailableItems() {
+                const config = window.requisitionFormConfig || {};
+                const items = Array.isArray(config.availableItems) ? config.availableItems : [];
+
+                const normalized = items.map(raw => ({
+                    id: this.normalizeId(raw.id),
+                    name: raw.name ?? 'Unnamed Item',
+                    category: raw.category ?? 'Other Items',
+                    uom: raw.uom ?? '',
+                    vendor: raw.vendor ?? '',
+                    price: this.toNumber(raw.price),
+                    legacy: Boolean(raw.legacy || false),
+                })).filter(item => item.id !== null);
+
+                normalized.sort((a, b) => this.sortByCategoryThenName(a, b));
+                return normalized;
+            },
+            ensureInitialSelections() {
+                this.rawInitialItems.forEach(item => {
+                    const itemId = this.normalizeId(item.item_id ?? item.itemId);
+                    if (!itemId) {
+                        return;
+                    }
+
+                    const exists = this.availableItems.some(available => available.id === itemId);
+                    if (exists) {
+                        return;
+                    }
+
+                    const fallbackName = item.itemName ?? item.item ?? item.item_name ?? `Item #${itemId}`;
+
+                    this.availableItems.push({
+                        id: itemId,
+                        name: fallbackName,
+                        category: 'Legacy Items',
+                        uom: item.uom ?? item.unit ?? '',
+                        vendor: item.vendor ?? '',
+                        price: this.toNumber(item.defaultPrice ?? item.originalPrice ?? item.price),
+                        legacy: true,
+                    });
+                });
+
+                this.availableItems.sort((a, b) => this.sortByCategoryThenName(a, b));
+            },
+            sortByCategoryThenName(a, b) {
+                const categoryCompare = (a.category || 'Other Items').localeCompare(b.category || 'Other Items');
+                if (categoryCompare !== 0) {
+                    return categoryCompare;
+                }
+                return (a.name || '').localeCompare(b.name || '');
+            },
+            normalizeId(value) {
+                const parsed = parseInt(value, 10);
+                return Number.isFinite(parsed) ? parsed : null;
+            },
+            toNumber(value) {
+                const parsed = parseFloat(value);
+                return Number.isFinite(parsed) ? parsed : 0;
             },
             parseBoolean(value) {
                 if (typeof value === 'string') {
@@ -90,14 +132,22 @@
                 }
                 return Boolean(value);
             },
+            pricesDiffer(a, b) {
+                return Math.abs(this.toNumber(a) - this.toNumber(b)) > 0.0001;
+            },
             
             get groupedItems() {
                 const grouped = {};
                 this.availableItems.forEach(item => {
-                    if (!grouped[item.category]) {
-                        grouped[item.category] = [];
+                    const category = item.category || 'Other Items';
+                    if (!grouped[category]) {
+                        grouped[category] = [];
                     }
-                    grouped[item.category].push(item);
+                    grouped[category].push(item);
+                });
+
+                Object.keys(grouped).forEach(category => {
+                    grouped[category].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
                 });
                 return grouped;
             },
@@ -119,16 +169,18 @@
             },
             
             selectItem(index) {
-                const selectedId = this.items[index].item_id;
+                const selectedId = this.normalizeId(this.items[index].item_id);
                 if (!selectedId) return;
                 
-                const item = this.availableItems.find(i => i.id == selectedId);
+                const item = this.availableItems.find(i => i.id === selectedId);
                 if (item) {
+                    this.items[index].item_id = selectedId;
                     this.items[index].vendor = item.vendor;
-                    this.items[index].price = item.price;
-                    this.items[index].defaultPrice = item.price;
-                    this.items[index].originalPrice = item.price;
+                    this.items[index].price = this.toNumber(item.price);
+                    this.items[index].defaultPrice = this.toNumber(item.price);
+                    this.items[index].originalPrice = this.toNumber(item.price);
                     this.items[index].uom = item.uom;
+                    this.items[index].itemName = item.name;
                     this.items[index].priceEdited = false;
                     this.updateLineTotal(index);
                 }
@@ -136,18 +188,16 @@
             
             updateLineTotal(index) {
                 const row = this.items[index];
-                const price = parseFloat(row.price) || 0;
-                const quantity = parseFloat(row.quantity) || 0;
+                const price = this.toNumber(row.price);
+                const quantity = this.toNumber(row.quantity);
                 row.lineTotal = price * quantity;
             },
             
             trackPriceChange(index) {
                 const row = this.items[index];
-                if (row.defaultPrice && parseFloat(row.price) !== parseFloat(row.defaultPrice)) {
-                    row.priceEdited = true;
-                } else {
-                    row.priceEdited = false;
-                }
+                row.priceEdited = row.defaultPrice
+                    ? this.pricesDiffer(row.price, row.defaultPrice)
+                    : false;
             },
             
             addItem() {
@@ -172,16 +222,25 @@
             },
             
             getItemName(itemId) {
-                const item = this.availableItems.find(i => i.id == itemId);
-                return item ? item.name : '';
+                const normalizedId = this.normalizeId(itemId);
+                if (!normalizedId) {
+                    return '';
+                }
+
+                const item = this.availableItems.find(i => i.id === normalizedId);
+                if (item) {
+                    return item.name;
+                }
+
+                const fallbackRow = this.items.find(row => this.normalizeId(row.item_id) === normalizedId);
+                return fallbackRow ? (fallbackRow.itemName || '') : '';
             },
             
             isFormValid() {
-                return this.items.every(item => 
-                    item.item_id && 
-                    item.price > 0 && 
-                    item.quantity > 0
-                );
+                return this.items.every(item => {
+                    const hasItem = Boolean(this.normalizeId(item.item_id));
+                    return hasItem && this.toNumber(item.price) > 0 && this.toNumber(item.quantity) > 0;
+                });
             },
             
             submitForm(event) {
@@ -198,7 +257,10 @@
                 }
                 
                 // Submit the form
-                event.target.submit();
+                const form = event?.target?.closest('form');
+                if (form) {
+                    form.submit();
+                }
             }
         };
 

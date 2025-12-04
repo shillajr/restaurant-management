@@ -12,6 +12,7 @@ use App\Http\Controllers\EmployeeSalaryController;
 use App\Http\Controllers\EmployeeLoanController;
 use App\Http\Controllers\VendorController;
 use App\Http\Controllers\FinancialLedgerController;
+use App\Http\Controllers\Integrations\TwilioBalanceController;
 
 Route::get('/', function () {
     return redirect('/dashboard');
@@ -27,6 +28,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/stats', [DashboardController::class, 'stats'])->name('dashboard.stats');
     Route::get('/dashboard/activity', [DashboardController::class, 'recentActivity'])->name('dashboard.activity');
+    Route::get('/entities/{entity}/integrations/twilio/balance', TwilioBalanceController::class)
+        ->name('integrations.twilio.balance');
 });
 
 // Chef Requisitions routes

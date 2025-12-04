@@ -137,11 +137,7 @@
                     </table>
                 </div>
 
-                @if ($expenses->hasPages())
-                    <div class="border-t border-gray-200 bg-gray-50 px-6 py-4">
-                        {{ $expenses->onEachSide(1)->links() }}
-                    </div>
-                @endif
+                <x-pagination :paginator="$expenses" container-class="border-t border-gray-200 bg-gray-50 px-6 py-4" :on-each-side="1" />
             </div>
         </section>
     </div>

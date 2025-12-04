@@ -53,7 +53,7 @@ class PayrollController extends Controller
             $query->where('employee_id', $request->employee_id);
         }
 
-        $payrolls = $query->paginate(20)->appends($request->query());
+        $payrolls = $query->paginate(10)->appends($request->query());
 
         // Get list of employees for filter dropdown
         $employees = User::orderBy('name')->get();
