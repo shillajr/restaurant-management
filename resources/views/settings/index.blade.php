@@ -70,7 +70,7 @@
         'Y-m-d' => 'YYYY-MM-DD',
     ];
 
-    $currentTimezone = old('timezone', $generalSettings->timezone ?? 'America/Los_Angeles');
+    $currentTimezone = old('timezone', $generalSettings->timezone ?? config('app.timezone'));
     $currentCurrency = old('currency', $generalSettings->currency ?? 'USD');
     $currentDateFormat = old('date_format', $generalSettings->date_format ?? 'm/d/Y');
     $currentLanguage = old('language', $generalSettings->language ?? 'en');
@@ -975,6 +975,7 @@
                                     $loyverseConnected = filled($integrationSettings->loyverse_api_key);
                                     $smtpConfigured = filled($integrationSettings->smtp_host) && filled($integrationSettings->smtp_username);
                                     $twilioConfigured = filled($integrationSettings->twilio_account_sid) && filled($integrationSettings->twilio_auth_token);
+                                    $loyverseRedirectUrl = route('api.loyverse.webhook');
                                 @endphp
 
                                 <div class="space-y-6">
@@ -999,6 +1000,13 @@
                                             <div>
                                                 <label for="loyverse_api_key" class="mb-1 block text-sm font-medium text-gray-700">API key</label>
                                                 <input type="password" name="loyverse_api_key" id="loyverse_api_key" value="{{ old('loyverse_api_key', $integrationSettings->loyverse_api_key) }}" class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                            </div>
+                                            <div>
+                                                <label for="loyverse_redirect_url" class="mb-1 block text-sm font-medium text-gray-700">Redirect URL</label>
+                                                <div class="relative">
+                                                    <input type="text" id="loyverse_redirect_url" value="{{ $loyverseRedirectUrl }}" readonly class="block w-full cursor-text rounded-md border border-dashed border-blue-300 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 focus:outline-none">
+                                                </div>
+                                                <p class="mt-1 text-xs text-gray-500">Configure this URL in the Loyverse developer portal so webhook events reach your RMS account.</p>
                                             </div>
                                             <div class="flex items-center gap-2">
                                                 <input type="checkbox" name="loyverse_auto_sync" id="loyverse_auto_sync" @checked(old('loyverse_auto_sync', $integrationSettings->loyverse_auto_sync)) class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">

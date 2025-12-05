@@ -74,11 +74,11 @@ class FinancialLedger extends Model
             }
 
             if (! $ledger->currency) {
-                $ledger->currency = config('app.currency', 'TZS');
+                $ledger->currency = config('finance.currency_code');
             }
 
             if (! $ledger->next_reminder_due_at) {
-                $ledger->next_reminder_due_at = Carbon::now()->addDays(7);
+                $ledger->next_reminder_due_at = Carbon::now()->addDays(static::reminderCadenceDays());
             }
         });
 
@@ -126,6 +126,16 @@ class FinancialLedger extends Model
         return $query->where('outstanding_amount', '>', 0)->whereNull('archived_at');
     }
 
+    public function scopeDueForReminder(Builder $query): Builder
+    {
+        return $query
+            ->where('status', self::STATUS_OPEN)
+            ->whereNull('archived_at')
+            ->where('outstanding_amount', '>', 0)
+            ->whereNotNull('next_reminder_due_at')
+            ->where('next_reminder_due_at', '<=', Carbon::now());
+    }
+
     public function registerPayment(float $amount, ?Carbon $paidAt = null, array $payload = []): FinancialLedgerPayment
     {
         $payment = $this->payments()->create([
@@ -167,14 +177,29 @@ class FinancialLedger extends Model
         $this->syncPurchaseOrderCreditStatus();
     }
 
+    public function markReminderSent(?Carbon $sentAt = null): void
+    {
+        $sent = $sentAt ?? Carbon::now();
+        $this->last_reminder_sent_at = $sent;
+        $this->next_reminder_due_at = $sent->copy()->addDays(static::reminderCadenceDays());
+        $this->saveQuietly();
+    }
+
     public function reopen(): void
     {
         $this->status = self::STATUS_OPEN;
         $this->closed_at = null;
-        $this->next_reminder_due_at = Carbon::now()->addDays(7);
+        $this->next_reminder_due_at = Carbon::now()->addDays(static::reminderCadenceDays());
         $this->saveQuietly();
 
         $this->syncPurchaseOrderCreditStatus();
+    }
+
+    protected static function reminderCadenceDays(): int
+    {
+        $days = (int) config('finance.reminder_cadence_days', 7);
+
+        return $days > 0 ? $days : 7;
     }
 
     public function archive(): void

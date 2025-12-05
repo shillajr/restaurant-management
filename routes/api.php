@@ -109,4 +109,4 @@ Route::middleware(['auth:sanctum'])->group(function () {
 });
 
 // Loyverse Webhook (no authentication required)
-Route::post('loyverse/webhook', [LoyverseController::class, 'webhook']);
+Route::post('loyverse/webhook', [LoyverseController::class, 'webhook'])->name('api.loyverse.webhook');

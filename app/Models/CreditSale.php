@@ -39,7 +39,7 @@ class CreditSale extends Model
             }
 
             if (! $sale->currency) {
-                $sale->currency = config('app.currency', 'TZS');
+                $sale->currency = config('finance.currency_code');
             }
         });
     }

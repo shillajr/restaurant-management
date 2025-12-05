@@ -103,6 +103,7 @@
                 <div class="rounded-md bg-gray-50 px-4 py-3">
                     <p class="text-xs font-semibold uppercase text-gray-500">Total on credit</p>
                     <p class="mt-1 text-lg font-semibold text-gray-900" x-text="formatCurrency(vendorTotal)"></p>
+                    <p class="mt-1 text-xs text-gray-500" x-text="reminderHelpText"></p>
                 </div>
 
                 <div>
@@ -143,7 +144,8 @@
 <script>
     window.__vendorLedgerConfig = {
         purchaseOrders: @json($purchaseOrdersPayload),
-        currency: @json($currencyCode),
+        currency: @json(['code' => $currencyCode, 'symbol' => $currencySymbol]),
+        reminderCadenceDays: @json($reminderCadenceDays),
         oldInputs: {
             purchase_order_id: @json(old('purchase_order_id')),
             selected_items: @json(old('po_item_keys', [])),
@@ -168,9 +170,15 @@
             const config = resolveConfig();
             const oldInputs = config.oldInputs || {};
 
+            const fallbackCurrency = {
+                code: normalize(config.currency?.code, @json($currencyCode)),
+                symbol: normalize(config.currency?.symbol, @json($currencySymbol)),
+            };
+
             return {
                 purchaseOrders: Array.isArray(config.purchaseOrders) ? config.purchaseOrders : [],
-                currency: normalize(config.currency, 'TZS'),
+                currency: fallbackCurrency,
+                reminderCadenceDays: Number(config.reminderCadenceDays) || @json($reminderCadenceDays),
                 vendorForm: {
                     purchaseOrderId: normalize(oldInputs.purchase_order_id),
                     selectedItems: toStringArray(oldInputs.selected_items),
@@ -218,17 +226,20 @@
                         .filter((item) => selected.has(String(item.key)))
                         .reduce((sum, item) => sum + Number(item.line_total || 0), 0);
                 },
+                get reminderHelpText() {
+                    return `Reminder emails will be scheduled every ${this.reminderCadenceDays} day${this.reminderCadenceDays === 1 ? '' : 's'} until the debt is cleared.`;
+                },
                 formatCurrency(value) {
                     const amount = Number(value || 0);
 
                     if (Number.isNaN(amount)) {
-                        return `${this.currency} 0.00`;
+                        return `${this.currency.symbol} 0.00`;
                     }
 
                     try {
-                        return new Intl.NumberFormat(undefined, { style: 'currency', currency: this.currency }).format(amount);
+                        return new Intl.NumberFormat(undefined, { style: 'currency', currency: this.currency.code }).format(amount);
                     } catch (error) {
-                        return `${this.currency} ${amount.toFixed(2)}`;
+                        return `${this.currency.symbol} ${amount.toFixed(2)}`;
                     }
                 },
                 formatQuantity(quantity, unit) {

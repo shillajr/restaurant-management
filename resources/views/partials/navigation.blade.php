@@ -49,6 +49,12 @@
                 'active' => ['settings'],
                 'permission' => null,
             ],
+            [
+                'label' => __('navigation.links.activity_log'),
+                'route' => 'activity-log.index',
+                'active' => ['activity-log.*'],
+                'permission' => 'view activity log',
+            ],
         ],
     ];
 

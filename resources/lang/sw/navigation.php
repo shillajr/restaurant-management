@@ -20,6 +20,7 @@ return [
         'financial_ledgers' => 'Deni na Mikopo',
         'reports' => 'Ripoti',
         'settings' => 'Mipangilio',
+        'activity_log' => 'Shajara ya Matukio',
     ],
     'hr' => [
         'toggle' => 'HR',

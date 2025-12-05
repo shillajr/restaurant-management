@@ -15,7 +15,7 @@ return new class extends Migration
             $id = DB::table('entities')->insertGetId([
                 'name' => config('app.name', 'RMS Default'),
                 'slug' => 'default',
-                'timezone' => config('app.timezone', 'America/Los_Angeles'),
+                'timezone' => config('app.timezone'),
                 'currency' => 'USD',
                 'is_active' => true,
                 'created_at' => now(),

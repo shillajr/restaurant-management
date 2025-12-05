@@ -14,7 +14,7 @@ return new class extends Migration
             $table->id();
             $table->string('sale_code')->unique();
             $table->date('sale_date')->nullable();
-            $table->string('currency', 3)->default(config('app.currency', 'TZS'));
+            $table->string('currency', 3)->default(config('finance.currency_code', 'TZS'));
             $table->decimal('total_amount', 12, 2);
             $table->string('customer_first_name');
             $table->string('customer_last_name');
@@ -41,7 +41,7 @@ return new class extends Migration
             $table->string('contact_last_name')->nullable();
             $table->string('contact_phone')->nullable();
             $table->string('contact_email')->nullable();
-            $table->string('currency', 3)->default(config('app.currency', 'TZS'));
+            $table->string('currency', 3)->default(config('finance.currency_code', 'TZS'));
             $table->decimal('principal_amount', 12, 2);
             $table->decimal('outstanding_amount', 12, 2);
             $table->decimal('paid_amount', 12, 2)->default(0);

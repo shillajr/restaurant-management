@@ -6,7 +6,7 @@
 <div class="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-10" x-data="expenseForm({
     quantity: {{ json_encode(old('quantity', 1)) }},
     unitPrice: {{ json_encode(old('unit_price', 0)) }},
-    currency: {{ json_encode(['code' => config('app.currency', 'TZS'), 'symbol' => config('app.currency_symbol', 'TSh')]) }}
+    currency: {{ json_encode(['code' => config('finance.currency_code'), 'symbol' => config('finance.currency_symbol')]) }}
 })">
     <div class="mb-8 flex items-center justify-between">
         <div>
@@ -147,17 +147,23 @@
 
 @push('scripts')
 <script>
+    const fallbackCurrency = @json([
+        'code' => config('finance.currency_code'),
+        'symbol' => config('finance.currency_symbol'),
+    ]);
+
     function expenseForm(initial) {
         return {
             quantity: parseFloat(initial.quantity) || 0,
             unitPrice: parseFloat(initial.unitPrice) || 0,
-            currency: initial.currency || { code: 'TZS', symbol: 'TSh' },
+            currency: initial.currency || fallbackCurrency,
             get total() {
                 return (this.quantity || 0) * (this.unitPrice || 0);
             },
             formatCurrency(value) {
                 const amount = parseFloat(value ?? 0) || 0;
-                return `${this.currency.symbol} ${amount.toFixed(2)}`;
+                const symbol = this.currency.symbol ?? fallbackCurrency.symbol;
+                return `${symbol} ${amount.toFixed(2)}`;
             }
         };
     }

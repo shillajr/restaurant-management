@@ -2,21 +2,27 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\CreditSale;
+use App\Http\Requests\StoreFinancialLedgerPaymentRequest;
+use App\Http\Requests\StoreFinancialLedgerRequest;
 use App\Models\FinancialLedger;
 use App\Models\FinancialLedgerPayment;
 use App\Models\PurchaseOrder;
 use App\Models\Vendor;
+use App\Services\Finance\LedgerService;
 use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class FinancialLedgerController extends Controller
 {
+    public function __construct(private readonly LedgerService $ledgerService)
+    {
+    }
+
     public function index(Request $request): View
     {
         $this->authorizeAccess($request->user());
@@ -80,208 +86,51 @@ class FinancialLedgerController extends Controller
 
         return view('finance.ledgers.create-vendor', [
             'purchaseOrdersPayload' => $this->buildPurchaseOrdersPayload(),
-            'currencyCode' => config('app.currency', 'TZS'),
+            'currencyCode' => config('finance.currency_code'),
+            'currencySymbol' => config('finance.currency_symbol'),
+            'reminderCadenceDays' => $this->reminderCadenceDays(),
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(StoreFinancialLedgerRequest $request): RedirectResponse
     {
         $this->authorizeAccess($request->user());
 
-        $entryType = $request->input('entry_type');
+        $validated = $request->validated();
 
-        if (! in_array($entryType, ['customer_receivable', 'vendor_debt'], true)) {
-            return back()
-                ->withErrors(['entry_type' => 'Invalid ledger entry type selected.'])
-                ->withInput();
-        }
-
-        if ($entryType === 'customer_receivable') {
-            $validated = $request->validate([
-                'customer_first_name' => ['required', 'string', 'max:255'],
-                'customer_last_name' => ['required', 'string', 'max:255'],
-                'customer_phone' => ['required', 'string', 'max:50'],
-                'amount' => ['required', 'numeric', 'min:0.01'],
-                'notes' => ['nullable', 'string', 'max:1000'],
-            ]);
-
-            DB::transaction(function () use ($validated) {
-                $amount = (float) $validated['amount'];
-                $openedAt = Carbon::now();
-                $nextReminder = $openedAt->copy()->addDays(7);
-
-                $sale = CreditSale::create([
-                    'sale_date' => $openedAt->toDateString(),
-                    'currency' => config('app.currency', 'TZS'),
-                    'total_amount' => $amount,
-                    'customer_first_name' => $validated['customer_first_name'],
-                    'customer_last_name' => $validated['customer_last_name'],
-                    'customer_phone' => $validated['customer_phone'],
-                    'customer_email' => null,
-                    'notes' => $validated['notes'] ?? null,
-                    'recorded_by' => Auth::id(),
-                ]);
-
-                $ledger = new FinancialLedger([
-                    'ledger_type' => FinancialLedger::TYPE_RECEIVABLE,
-                    'status' => FinancialLedger::STATUS_OPEN,
-                    'credit_sale_id' => $sale->id,
-                    'vendor_name' => $validated['customer_first_name'] . ' ' . $validated['customer_last_name'],
-                    'contact_first_name' => $validated['customer_first_name'],
-                    'contact_last_name' => $validated['customer_last_name'],
-                    'contact_phone' => $validated['customer_phone'],
-                    'principal_amount' => $amount,
-                    'outstanding_amount' => $amount,
-                    'paid_amount' => 0,
-                    'opened_at' => $openedAt,
-                    'next_reminder_due_at' => $nextReminder,
-                    'notes' => $validated['notes'] ?? null,
-                ]);
-
-                $ledger->source()->associate($sale);
-                $ledger->creditSale()->associate($sale);
-                $ledger->save();
-            });
+        if ($validated['entry_type'] === StoreFinancialLedgerRequest::ENTRY_TYPE_CUSTOMER_RECEIVABLE) {
+            $this->ledgerService->createCustomerReceivable(
+                $request->user(),
+                $validated['customer_first_name'],
+                $validated['customer_last_name'],
+                $validated['customer_phone'],
+                (float) $validated['amount'],
+                $validated['notes'] ?? null
+            );
 
             return redirect()
                 ->route('financial-ledgers.index')
                 ->with('success', 'Customer receivable recorded successfully.');
         }
 
-        $validated = $request->validate([
-            'purchase_order_id' => ['required', 'exists:purchase_orders,id'],
-            'po_item_keys' => ['required', 'array', 'min:1'],
-            'po_item_keys.*' => ['string'],
-            'notes' => ['nullable', 'string', 'max:1000'],
-        ]);
+        $vendorContext = $this->buildVendorDebtContext($validated);
 
-        $purchaseOrder = PurchaseOrder::query()->findOrFail($validated['purchase_order_id']);
-        $items = collect($purchaseOrder->items ?? [])->values();
-
-        if ($items->isEmpty()) {
-            throw ValidationException::withMessages([
-                'purchase_order_id' => 'The selected purchase order has no items available for credit.',
-            ]);
-        }
-
-        $selectedItems = collect($validated['po_item_keys'])
-            ->map(function ($key) use ($items) {
-                if (! is_numeric($key)) {
-                    throw ValidationException::withMessages([
-                        'po_item_keys' => 'Invalid item selection provided.',
-                    ]);
-                }
-
-                $index = (int) $key;
-                $item = $items->get($index);
-
-                if (! $item) {
-                    throw ValidationException::withMessages([
-                        'po_item_keys' => 'One or more selected items are no longer available on this purchase order.',
-                    ]);
-                }
-
-                $quantity = (float) ($item['quantity'] ?? 0);
-                $unitPrice = (float) ($item['price'] ?? ($item['unit_price'] ?? 0));
-                $lineTotal = (float) ($item['line_total'] ?? ($quantity * $unitPrice));
-
-                return [
-                    'index' => $index,
-                    'label' => $item['item'] ?? ($item['item_id'] ?? 'Item ' . ($index + 1)),
-                    'vendor' => $item['vendor'] ?? null,
-                    'quantity' => $quantity,
-                    'unit' => $item['unit'] ?? ($item['uom'] ?? null),
-                    'unit_price' => $unitPrice,
-                    'line_total' => $lineTotal,
-                ];
-            })
-            ->values();
-
-        if ($selectedItems->isEmpty()) {
-            throw ValidationException::withMessages([
-                'po_item_keys' => 'Select at least one line item to continue.',
-            ]);
-        }
-
-        $principalAmount = $selectedItems->sum('line_total');
-
-        if ($principalAmount <= 0) {
-            throw ValidationException::withMessages([
-                'po_item_keys' => 'The selected items do not have a payable total. Please confirm their pricing.',
-            ]);
-        }
-
-        $uniqueVendors = $selectedItems->pluck('vendor')->filter()->unique();
-
-        if ($uniqueVendors->count() > 1) {
-            throw ValidationException::withMessages([
-                'po_item_keys' => 'Please create a separate entry for items from different vendors.',
-            ]);
-        }
-
-        $vendor = null;
-        $vendorName = $uniqueVendors->first();
-
-        if ($purchaseOrder->supplier_id) {
-            $vendor = Vendor::find($purchaseOrder->supplier_id);
-        }
-
-        if (! $vendor && $vendorName) {
-            $vendor = Vendor::query()
-                ->whereRaw('LOWER(name) = ?', [strtolower($vendorName)])
-                ->first();
-        }
-
-        $displayVendorName = $vendor?->name ?? $vendorName ?? 'Vendor for ' . $purchaseOrder->po_number;
-
-        $itemSummary = $selectedItems->map(function (array $item) {
-            $quantity = $item['quantity'];
-            $quantityLabel = $quantity == (int) $quantity ? (string) (int) $quantity : number_format($quantity, 2);
-            $unitSuffix = $item['unit'] ? ' ' . $item['unit'] : '';
-            $lineLabel = number_format($item['line_total'], 2);
-
-            return sprintf('%s — Qty %s%s (Total %s)', $item['label'], $quantityLabel, $unitSuffix, $lineLabel);
-        })->implode('; ');
-
-        $notesPayload = collect([$validated['notes'] ?? null, $itemSummary ? 'Credited items: ' . $itemSummary : null])
-            ->filter()
-            ->implode("\n\n");
-
-        DB::transaction(function () use ($principalAmount, $purchaseOrder, $vendor, $displayVendorName, $notesPayload) {
-            $openedAt = Carbon::now();
-            $nextReminder = $openedAt->copy()->addDays(7);
-
-            $ledger = new FinancialLedger([
-                'ledger_type' => FinancialLedger::TYPE_LIABILITY,
-                'status' => FinancialLedger::STATUS_OPEN,
-                'purchase_order_id' => $purchaseOrder->id,
-                'vendor_id' => $vendor?->id,
-                'vendor_name' => $displayVendorName,
-                'vendor_phone' => $vendor?->phone,
-                'contact_phone' => $vendor?->phone,
-                'contact_email' => $vendor?->email,
-                'principal_amount' => $principalAmount,
-                'outstanding_amount' => $principalAmount,
-                'paid_amount' => 0,
-                'opened_at' => $openedAt,
-                'next_reminder_due_at' => $nextReminder,
-                'notes' => $notesPayload ?: null,
-            ]);
-
-            if ($vendor) {
-                $ledger->vendor()->associate($vendor);
-            }
-
-            $ledger->source()->associate($purchaseOrder);
-            $ledger->save();
-        });
+        $this->ledgerService->createVendorDebt(
+            $request->user(),
+            $vendorContext['purchase_order'],
+            $vendorContext['vendor'],
+            $vendorContext['display_vendor_name'],
+            $vendorContext['principal_amount'],
+            $vendorContext['notes'],
+            $vendorContext['item_summary']
+        );
 
         return redirect()
             ->route('financial-ledgers.index')
             ->with('success', 'Vendor debt recorded successfully.');
     }
 
-    public function storePayment(Request $request, FinancialLedger $financialLedger)
+    public function storePayment(StoreFinancialLedgerPaymentRequest $request, FinancialLedger $financialLedger)
     {
         $this->authorizePaymentAccess($request->user());
 
@@ -297,13 +146,7 @@ class FinancialLedgerController extends Controller
             return back()->withErrors(['amount' => $message]);
         }
 
-        $validated = $request->validate([
-            'amount' => ['required', 'numeric', 'min:0.01'],
-            'paid_at' => ['nullable', 'date'],
-            'payment_method' => ['required', 'in:' . implode(',', array_column($this->paymentMethods(), 'value'))],
-            'reference' => ['nullable', 'string', 'max:255'],
-            'notes' => ['nullable', 'string', 'max:1000'],
-        ]);
+        $validated = $request->validated();
 
         $amount = (float) $validated['amount'];
 
@@ -316,12 +159,20 @@ class FinancialLedgerController extends Controller
         }
 
         $paidAt = isset($validated['paid_at']) ? Carbon::parse($validated['paid_at']) : null;
+        $recordedBy = $request->user()?->getAuthIdentifier();
 
         $payment = $financialLedger->registerPayment($amount, $paidAt, [
             'payment_method' => $validated['payment_method'],
             'reference' => $validated['reference'] ?? null,
             'notes' => $validated['notes'] ?? null,
-            'recorded_by' => Auth::id(),
+            'recorded_by' => $recordedBy,
+        ]);
+
+        Log::info('finance.ledger.payment_recorded', [
+            'ledger_id' => $financialLedger->id,
+            'amount' => $amount,
+            'payment_method' => $validated['payment_method'],
+            'recorded_by' => $recordedBy,
         ]);
 
         $financialLedger->refresh()->loadMissing(['payments' => function ($query) {
@@ -345,7 +196,7 @@ class FinancialLedgerController extends Controller
             ->select(['id', 'po_number', 'status', 'workflow_status', 'items', 'grand_total', 'supplier_id', 'created_at'])
             ->where('status', '!=', 'cancelled')
             ->orderByDesc('created_at')
-            ->limit(50)
+            ->limit($this->purchaseOrderPayloadLimit())
             ->get()
             ->map(function (PurchaseOrder $purchaseOrder) {
                 $items = collect($purchaseOrder->items ?? [])->values();
@@ -393,6 +244,145 @@ class FinancialLedgerController extends Controller
             ->all();
     }
 
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function buildVendorDebtContext(array $validated): array
+    {
+        $purchaseOrder = PurchaseOrder::query()->findOrFail($validated['purchase_order_id']);
+        $items = collect($purchaseOrder->items ?? [])->values();
+
+        if ($items->isEmpty()) {
+            throw ValidationException::withMessages([
+                'purchase_order_id' => 'The selected purchase order has no items available for credit.',
+            ]);
+        }
+
+        $selectedItems = collect($validated['po_item_keys'])
+            ->map(function ($key) use ($items) {
+                if (! ctype_digit((string) $key)) {
+                    throw ValidationException::withMessages([
+                        'po_item_keys' => 'Invalid item selection provided.',
+                    ]);
+                }
+
+                $index = (int) $key;
+                $item = $items->get($index);
+
+                if (! $item) {
+                    throw ValidationException::withMessages([
+                        'po_item_keys' => 'One or more selected items are no longer available on this purchase order.',
+                    ]);
+                }
+
+                $quantity = (float) ($item['quantity'] ?? 0);
+                $unitPrice = (float) ($item['price'] ?? ($item['unit_price'] ?? 0));
+                $lineTotal = (float) ($item['line_total'] ?? ($quantity * $unitPrice));
+
+                return [
+                    'index' => $index,
+                    'label' => (string) ($item['item'] ?? ($item['item_id'] ?? 'Item ' . ($index + 1))),
+                    'vendor' => $item['vendor'] ?? null,
+                    'quantity' => $quantity,
+                    'unit' => $item['unit'] ?? ($item['uom'] ?? null),
+                    'unit_price' => $unitPrice,
+                    'line_total' => $lineTotal,
+                ];
+            })
+            ->values();
+
+        if ($selectedItems->isEmpty()) {
+            throw ValidationException::withMessages([
+                'po_item_keys' => 'Select at least one line item to continue.',
+            ]);
+        }
+
+        $maxItems = (int) config('finance.vendor_debt_max_items', 20);
+        if ($maxItems > 0 && $selectedItems->count() > $maxItems) {
+            throw ValidationException::withMessages([
+                'po_item_keys' => "Select up to {$maxItems} items per vendor debt entry.",
+            ]);
+        }
+
+        $principalAmount = (float) $selectedItems->sum('line_total');
+
+        if ($principalAmount <= 0) {
+            throw ValidationException::withMessages([
+                'po_item_keys' => 'The selected items do not have a payable total. Please confirm their pricing.',
+            ]);
+        }
+
+        $uniqueVendors = $selectedItems->pluck('vendor')->filter()->unique();
+
+        if ($uniqueVendors->count() > 1) {
+            throw ValidationException::withMessages([
+                'po_item_keys' => 'Please create a separate entry for items from different vendors.',
+            ]);
+        }
+
+        $vendorName = $uniqueVendors->first();
+        $vendor = $this->resolveVendorForPurchaseOrder($purchaseOrder, $vendorName);
+        $displayVendorName = $vendor?->name ?? $vendorName ?? 'Vendor for ' . $purchaseOrder->po_number;
+
+        $itemSummary = $this->formatSelectedItemsSummary($selectedItems);
+
+        $notesPayload = collect([
+            $validated['notes'] ?? null,
+            $itemSummary !== '' ? 'Credited items: ' . $itemSummary : null,
+        ])->filter()->implode("\n\n") ?: null;
+
+        return [
+            'purchase_order' => $purchaseOrder,
+            'vendor' => $vendor,
+            'display_vendor_name' => $displayVendorName,
+            'principal_amount' => $principalAmount,
+            'notes' => $notesPayload,
+            'item_summary' => $itemSummary,
+        ];
+    }
+
+    private function resolveVendorForPurchaseOrder(PurchaseOrder $purchaseOrder, ?string $vendorName): ?Vendor
+    {
+        if ($purchaseOrder->supplier_id) {
+            return Vendor::find($purchaseOrder->supplier_id);
+        }
+
+        if ($vendorName) {
+            return Vendor::query()
+                ->whereRaw('LOWER(name) = ?', [strtolower($vendorName)])
+                ->first();
+        }
+
+        return null;
+    }
+
+    private function formatSelectedItemsSummary(Collection $items): string
+    {
+        return $items->map(function (array $item) {
+            $quantity = $item['quantity'];
+            $quantityLabel = $quantity == (int) $quantity ? (string) (int) $quantity : number_format($quantity, 2);
+            $unitSuffix = $item['unit'] ? ' ' . $item['unit'] : '';
+            $lineLabel = number_format($item['line_total'], 2);
+
+            return sprintf('%s — Qty %s%s (Total %s)', $item['label'], $quantityLabel, $unitSuffix, $lineLabel);
+        })->implode('; ');
+    }
+
+    private function reminderCadenceDays(): int
+    {
+        $days = (int) config('finance.reminder_cadence_days', 7);
+
+        return $days > 0 ? $days : 7;
+    }
+
+    private function purchaseOrderPayloadLimit(): int
+    {
+        $limit = (int) config('finance.vendor_debt_max_items', 20);
+
+        return $limit > 0 ? $limit : 20;
+    }
+
     private function authorizeAccess($user): void
     {
         if (! $user) {
@@ -420,13 +410,13 @@ class FinancialLedgerController extends Controller
 
     private function paymentMethods(): array
     {
-        return [
-            ['value' => 'cash', 'label' => 'Cash'],
-            ['value' => 'card', 'label' => 'Card'],
-            ['value' => 'mobile_money', 'label' => 'Mobile Money'],
-            ['value' => 'bank_transfer', 'label' => 'Bank Transfer'],
-            ['value' => 'check', 'label' => 'Check'],
-        ];
+        return collect(config('finance.payment_methods', []))
+            ->map(fn ($label, $value) => [
+                'value' => (string) $value,
+                'label' => (string) $label,
+            ])
+            ->values()
+            ->all();
     }
 
     private function formatLedgerForResponse(FinancialLedger $ledger): array

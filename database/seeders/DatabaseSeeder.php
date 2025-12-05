@@ -63,6 +63,9 @@ class DatabaseSeeder extends Seeder
             'view reports',
             'export reports',
 
+            // Activity log
+            'view activity log',
+
             // Settings permissions
             'manage settings',
             
@@ -101,6 +104,7 @@ class DatabaseSeeder extends Seeder
             'approve expenses',
             'view reports',
             'export reports',
+            'view activity log',
             'approve purchase orders',
         ]);
 
@@ -128,6 +132,7 @@ class DatabaseSeeder extends Seeder
             'send purchase orders',
             'view reports',
             'export reports',
+            'view activity log',
         ]);
 
         // Finance - Expenses and Payroll
@@ -150,6 +155,7 @@ class DatabaseSeeder extends Seeder
             'mark paid',
             'view reports',
             'export reports',
+            'view activity log',
         ]);
 
         // Auditor - View Only
@@ -157,6 +163,7 @@ class DatabaseSeeder extends Seeder
         $auditor->givePermissionTo([
             'view reports',
             'export reports',
+            'view activity log',
         ]);
 
         // Ensure default entity exists
@@ -164,7 +171,7 @@ class DatabaseSeeder extends Seeder
             ['slug' => 'default'],
             [
                 'name' => config('app.name', 'Restaurant Management System'),
-                'timezone' => config('app.timezone', 'America/Los_Angeles'),
+                'timezone' => config('app.timezone'),
                 'currency' => 'USD',
                 'is_active' => true,
             ]

@@ -20,6 +20,7 @@ return [
         'financial_ledgers' => 'Debts & Credits',
         'reports' => 'Reports',
         'settings' => 'Settings',
+        'activity_log' => 'Activity Log',
     ],
     'hr' => [
         'toggle' => 'HR',

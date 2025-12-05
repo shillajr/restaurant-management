@@ -31,7 +31,7 @@ class SettingsController extends Controller
         $general = EntityGeneralSetting::firstOrCreate(
             ['entity_id' => $entity->id],
             [
-                'timezone' => $entity->timezone ?: 'America/Los_Angeles',
+                'timezone' => $entity->timezone ?: config('app.timezone'),
                 'currency' => $entity->currency ?: Currency::defaultCode(),
                 'date_format' => 'm/d/Y',
                 'language' => Localization::default(),
@@ -228,7 +228,7 @@ class SettingsController extends Controller
             ['slug' => 'default'],
             [
                 'name' => config('app.name', 'RMS Default'),
-                'timezone' => config('app.timezone', 'America/Los_Angeles'),
+                'timezone' => config('app.timezone'),
                 'currency' => Currency::defaultCode(),
             ]
         );

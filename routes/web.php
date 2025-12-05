@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AdminUserController;
+use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\ItemCategoryController;
@@ -12,6 +13,7 @@ use App\Http\Controllers\EmployeeSalaryController;
 use App\Http\Controllers\EmployeeLoanController;
 use App\Http\Controllers\VendorController;
 use App\Http\Controllers\FinancialLedgerController;
+use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\Integrations\TwilioBalanceController;
 
 Route::get('/', function () {
@@ -73,9 +75,16 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('role:admin|manager|finance')
         ->name('financial-ledgers.payments.store');
     
-    Route::get('/reports', function () {
-        return 'Reports Index - To be implemented';
-    })->name('reports.index');
+    Route::get('/reports', [ReportsController::class, 'index'])
+        ->middleware('can:view reports')
+        ->name('reports.index');
+    Route::get('/reports/export', [ReportsController::class, 'export'])
+        ->middleware('can:view reports')
+        ->name('reports.export');
+
+    Route::get('/activity-log', [ActivityLogController::class, 'index'])
+        ->middleware('can:view activity log')
+        ->name('activity-log.index');
     
     // Payroll Management Routes (Admin Only)
     Route::middleware(['role:admin'])->group(function () {
