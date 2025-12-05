@@ -3,7 +3,7 @@
 return [
     'login' => [
         'page_title' => 'Login - Restaurant Management',
-        'heading' => 'Restaurant Management System',
+        'heading' => 'RMS',
         'subheading' => 'Sign in to your account',
         'email_label' => 'Email address',
         'password_label' => 'Password',

@@ -80,34 +80,6 @@
                     </div>
                 </form>
 
-                <div class="mt-6">
-                    <div class="relative">
-                        <div class="absolute inset-0 flex items-center">
-                            <div class="w-full border-t border-gray-300"></div>
-                        </div>
-                        <div class="relative flex justify-center text-sm">
-                            <span class="px-2 bg-white text-gray-500">{{ $login['test_credentials']['heading'] }}</span>
-                        </div>
-                    </div>
-
-                    <div class="mt-4 space-y-2 text-xs">
-                        <div class="bg-gray-50 rounded p-3">
-                            <p class="font-semibold text-gray-700 mb-2">{{ $login['test_credentials']['description'] }}</p>
-                            <div class="grid grid-cols-2 gap-2 text-gray-600">
-                                @foreach (($testAccounts ?? []) as $role => $email)
-                                    <div>
-                                        <strong>{{ $login['test_credentials']['roles'][$role] ?? ucfirst($role) }}:</strong>
-                                        {{ $email }}
-                                    </div>
-                                @endforeach
-                            </div>
-                            <p class="mt-2 text-gray-500 italic">
-                                {{ $login['test_credentials']['password_hint'] }}:
-                                <strong>{{ $login['test_credentials']['password_value'] }}</strong>
-                            </p>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     </div>

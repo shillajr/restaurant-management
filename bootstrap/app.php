@@ -11,6 +11,13 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    ->withCommands([
+        \App\Console\Commands\RemindPendingApprovals::class,
+        \App\Console\Commands\SendVendorPaymentReminders::class,
+        \App\Console\Commands\TestMakerCheckerWorkflow::class,
+        \App\Console\Commands\CleanupRemoveSeededAndTempData::class,
+        \App\Console\Commands\CleanupWipeDatabase::class,
+    ])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,

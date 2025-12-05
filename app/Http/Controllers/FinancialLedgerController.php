@@ -14,8 +14,10 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use App\Support\CacheKeys;
 
 class FinancialLedgerController extends Controller
 {
@@ -58,18 +60,27 @@ class FinancialLedgerController extends Controller
 
         $ledgers = $ledgersQuery->paginate(10)->withQueryString();
 
-        $stats = [
-            'total_outstanding' => (float) FinancialLedger::outstanding()->sum('outstanding_amount'),
-            'total_principal' => (float) FinancialLedger::sum('principal_amount'),
-            'total_paid' => (float) FinancialLedger::sum('paid_amount'),
-            'liability_outstanding' => (float) FinancialLedger::where('ledger_type', FinancialLedger::TYPE_LIABILITY)->sum('outstanding_amount'),
-            'receivable_outstanding' => (float) FinancialLedger::where('ledger_type', FinancialLedger::TYPE_RECEIVABLE)->sum('outstanding_amount'),
-        ];
+        $stats = Cache::remember(CacheKeys::FINANCIAL_LEDGER_STATS, now()->addMinutes(10), function () {
+            return [
+                'total_outstanding' => (float) FinancialLedger::outstanding()->sum('outstanding_amount'),
+                'total_principal' => (float) FinancialLedger::sum('principal_amount'),
+                'total_paid' => (float) FinancialLedger::sum('paid_amount'),
+                'liability_outstanding' => (float) FinancialLedger::where('ledger_type', FinancialLedger::TYPE_LIABILITY)->sum('outstanding_amount'),
+                'receivable_outstanding' => (float) FinancialLedger::where('ledger_type', FinancialLedger::TYPE_RECEIVABLE)->sum('outstanding_amount'),
+            ];
+        });
 
-        $upcomingReminders = FinancialLedger::whereNotNull('next_reminder_due_at')
-            ->orderBy('next_reminder_due_at')
-            ->limit(5)
-            ->get(['id', 'ledger_code', 'next_reminder_due_at', 'vendor_name', 'contact_first_name', 'contact_last_name']);
+        $upcomingReminders = Cache::remember(CacheKeys::FINANCIAL_LEDGER_REMINDERS, now()->addMinutes(5), function () {
+            return FinancialLedger::whereNotNull('next_reminder_due_at')
+                ->orderBy('next_reminder_due_at')
+                ->limit(5)
+                ->get(['id', 'ledger_code', 'next_reminder_due_at', 'vendor_name', 'contact_first_name', 'contact_last_name']);
+        });
+
+        if (is_array($upcomingReminders)) {
+            $upcomingReminders = FinancialLedger::hydrate($upcomingReminders)->sortBy('next_reminder_due_at')->values();
+            Cache::put(CacheKeys::FINANCIAL_LEDGER_REMINDERS, $upcomingReminders, now()->addMinutes(5));
+        }
 
         return view('finance.ledgers.index', [
             'ledgers' => $ledgers,
@@ -192,7 +203,8 @@ class FinancialLedgerController extends Controller
 
     protected function buildPurchaseOrdersPayload(): array
     {
-        return PurchaseOrder::query()
+        return Cache::remember(CacheKeys::PURCHASE_ORDER_LEDGER_PAYLOAD, now()->addMinutes(5), function () {
+            return PurchaseOrder::query()
             ->select(['id', 'po_number', 'status', 'workflow_status', 'items', 'grand_total', 'supplier_id', 'created_at'])
             ->where('status', '!=', 'cancelled')
             ->orderByDesc('created_at')
@@ -242,6 +254,7 @@ class FinancialLedgerController extends Controller
             ->filter()
             ->values()
             ->all();
+        });
     }
 
     /**
